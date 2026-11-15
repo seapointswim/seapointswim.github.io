@@ -173,3 +173,13 @@ test('missing wind, warnings or bathing notices cannot produce a recommended per
    assert.equal(plan.start,undefined,missing);
  }
 });
+
+test('the default day follows Dublin daylight in winter and summer', () => {
+ for (const [date,sunset,check,expected] of [
+   ['2026-06-15','21:56','19:00','2026-06-15'],
+   ['2026-11-15','16:24','16:10','2026-11-16']
+ ]) {
+   const wind = {daily:{time:[date],sunset:[date+'T'+sunset]}};
+   assert.equal(core.defaultSwimDate(wind,core.localToUtc(date,check)),expected);
+ }
+});
