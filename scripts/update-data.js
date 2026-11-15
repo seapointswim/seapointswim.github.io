@@ -2,17 +2,15 @@
 /** Scheduled snapshot builder for static GitHub Pages. No API keys or dependencies. */
 const fs = require('node:fs');
 const path = require('node:path');
-const {parseTideCsv, extrema, fallbackEvents} = require('../site/core.js');
-const {PORT_TABLE, portTableEvents, withPortTable} = require('./port-tides');
-const {OFFICIAL_TIDES} = require('./tides-2026.js');
+const {SEAPOINT_STATION, parseTideCsv, extrema} = require('../site/core.js');
+const seapointTides2026 = require('./tides-2026.js');
 
 const ROOT = path.resolve(__dirname, '../site/data/conditions.json');
 const NOW = () => Date.now();
 const HOUR = 3600000;
 const EPS = 1e-8;
 const PROVIDERS={
-  tideTable: {name:'Dublin Port · published tide table',url:PORT_TABLE},
-  tide: {name:'Marine Institute · Dublin Port tide prediction',url:'https://erddap.marine.ie/erddap/info/imiTidePrediction/index.html'},
+  tide: {name:'Marine Institute · Seapoint beach tide model',url:'https://erddap.marine.ie/erddap/info/imiTidePredictionEpa/index.html'},
   wind: {name:'Open-Meteo · local wind and air temperature forecast',url:'https://open-meteo.com/en/docs'},
   waves: {name:'Open-Meteo · nearby offshore wave forecast',url:'https://open-meteo.com/en/docs/marine-weather-api'},
   seaTemp: {name:'Open-Meteo · model sea-surface temperature',url:'https://open-meteo.com/en/docs/marine-weather-api'},
@@ -88,9 +86,9 @@ function mergeWaveForecast(primary, fallback){
 
 async function buildSnapshot({fetchImpl=fetch,now=Date.now()}={}){
   const low=iso(now-2*24*HOUR),high=iso(now+10*24*HOUR);
-  const tideUrl='https://erddap.marine.ie/erddap/tabledap/imiTidePrediction.csv?time%2CWater_Level&'+[`stationID=${encodeURIComponent('"Dublin_Port"')}`, encodeURIComponent('time>=' + low), encodeURIComponent('time<=' + high)].join('&');
+  const tideUrl='https://erddap.marine.ie/erddap/tabledap/imiTidePredictionEpa.csv?time%2CstationID%2Csea_surface_height&'+[`stationID=${encodeURIComponent(JSON.stringify(SEAPOINT_STATION))}`, encodeURIComponent('time>=' + low), encodeURIComponent('time<=' + high)].join('&');
   const windUrl=url('https://api.open-meteo.com/v1/forecast',{
-    latitude:'53.2925',longitude:'-6.1640',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:1,forecast_days:8
+    latitude:'53.29694',longitude:'-6.15862',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:1,forecast_days:8
   });
   const waveParams={latitude:'53.30',longitude:'-6.12',hourly:'wave_height,wave_period,wave_direction',timezone:'Europe/Dublin',cell_selection:'sea',past_days:1,forecast_days:8};
   const seaUrl=url('https://marine-api.open-meteo.com/v1/marine',{
@@ -98,11 +96,6 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now()}={}){
   });
   const buoyUrl='https://erddap.marine.ie/erddap/tabledap/IWBNetwork.csv?time%2CWindSpeed%2CWaveHeight%2CSeaTemperature&'+'station_id=%22M2%22&' + encodeURIComponent('time>=' + iso(now-12*HOUR));
   const promises={
-    tideTable:attempt('tideTable',async()=>{
-      const rows = portTableEvents(await readRemote(PORT_TABLE, 'html', fetchImpl));
-      if (rows.at(-1).t < now || rows[0].t > now + 24*HOUR) throw Error('Tide table does not cover the forecast');
-      return rows;
-    }),
     tide:attempt('tide',async()=>{
       const csv=await readRemote(tideUrl,'csv',fetchImpl);
       const pts=parseTideCsv(csv);
@@ -143,25 +136,23 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now()}={}){
   const found=Object.fromEntries(ids.map((id,i)=>[id,values[i]]));
   let tidePoints=found.tide.value||[];
   let events=extrema(tidePoints),sourceFallback=false;
-  if (found.tideTable.value) {
-    events = withPortTable(events, found.tideTable.value);
-  }
-  if(!events.length){
-    // Only dated, previously-published Dublin Port events, not invented times.
-    const known=fallbackEvents(OFFICIAL_TIDES);
-    if(known.some(e=>e.t>=now-24*HOUR&&e.t<now+48*HOUR)){
-      tidePoints=[];events=withPortTable([], known);sourceFallback=true;
-      found.tide.meta={...found.tide.meta,status:'published-copy',error:found.tide.meta.error||'Live tide feed unavailable; using dated official table'};
-    }
+  if (!events.length) {
+    const first = Date.parse(low), last = Date.parse(high);
+    // The saved highs and lows come from this same beach model and vertical datum.
+    tidePoints = [];
+    events = seapointTides2026.map(([utc,h,type]) => ({t:Date.parse(utc),h,type}))
+      .filter(e => e.t >= first && e.t <= last);
+    sourceFallback = events.length > 0;
+    found.tide.meta.status = sourceFallback ? 'published-copy' : 'unavailable';
   }
   const out={
-    schemaVersion:1,generatedAt:new Date(now).toISOString(),validForMinutes:90,
+    schemaVersion:2,generatedAt:new Date(now).toISOString(),validForMinutes:90,
     coverage:{days:8,timeZone:'Europe/Dublin'},
     tidePoints,events,
     wind:found.wind.value,waves:found.waves.value,seaTemp:found.seaTemp.value,
     buoyTemp:found.buoy.value,warningFeed:found.warnings.value,alertsFeed:found.alerts.value,
     sources:Object.fromEntries(ids.map(id=>[id,found[id].meta])),
-    notes:{tides:{fallback:sourceFallback},models:'Forecast grid points are offshore; waves and sea temperatures are not Seapoint steps measurements.'},
+    notes:{tides:{stationID:SEAPOINT_STATION, fallback:sourceFallback},models:'Forecast grid points are offshore; waves and sea temperatures are not Seapoint steps measurements.'},
   };
   return out;
 }
