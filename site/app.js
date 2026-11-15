@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const SOURCE_LABEL={tide:'Marine Institute tides',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
+const SOURCE_LABEL={tideTable:'Dublin Port tide table',tide:'Marine Institute tides',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
 const states={good:['LIKELY GOOD','✓'],caution:['MIXED CONDITIONS','!'],avoid:['NOT RECOMMENDED','×'],unknown:['NOT ENOUGH DATA','?']};
 const fmt=(iso)=>new Intl.DateTimeFormat('en-IE',{timeZone:'Europe/Dublin',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));
 const fmtClock=(iso)=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
@@ -32,7 +32,7 @@ function choose(date, time, defaultDay = false) {
   history.replaceState(null, '', url);
   load();
 }
-function renderDaily(outlook, daylight = {}) {
+function renderDaily(outlook, daylight = {}, highs = []) {
   const today = here().date;
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
@@ -42,16 +42,21 @@ function renderDaily(outlook, daylight = {}) {
   set('daily-reason', outlook.reason);
   set('sunrise', daylight.rise || 'Unavailable');
   set('sunset', daylight.set || 'Unavailable');
+  set('daily-highs', highs.map(e => fmtClock(e.t)).join(' and ') || 'Unavailable');
 }
 function showStatus(id,s){const el=$(id);el.className='factor-icon '+s;el.textContent=s==='good'?'✓':s==='caution'?'!':s==='avoid'?'×':'?';}
 function set(id,s){$(id).textContent=s}
-function render(data){renderDaily(data.outlook, data.daylight);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
+function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
  set('state',states[status][0]);set('chosen','At '+data.time+' · '+dayLabel(data.date));set('headline',data.headline);set('explain',data.explanation);
  const t=data.tide,w=data.waves,wind=data.wind;
  set('tide-main',t?.valid?(t.inside?'In window':'Outside window'):'Unavailable');showStatus('tide-symbol',t?.valid?(t.inside?'good':'avoid'):'unknown');
  set('wave-main',w?.heightM==null?'Unavailable':w.heightM.toFixed(2)+' m');showStatus('wave-symbol',w?.status||'unknown');
  set('wind-main',wind?.speedKn==null?'Unavailable':wind.speedKn.toFixed(0)+' kn');showStatus('wind-symbol',wind?.status||'unknown');
- if(t?.valid){const start=fmtClock(t.window.start),end=fmtClock(t.window.end),high=fmtClock(t.high.at);
+ const tideClock = at => {
+   const local = window.SeapointCore.dublinParts(at);
+   return local.date === data.date ? local.time : dayLabel(local.date) + ' ' + local.time;
+ };
+ if(t?.valid){const start=tideClock(t.window.start),end=tideClock(t.window.end),high=tideClock(t.high.at);
    set('window-main',start+'–'+end+' · High '+high);
    set('window-sub','High water '+t.high.height.toFixed(2)+' m ('+t.datum+'); your ±'+t.window.hours.toFixed(1)+' h guideline');
    set('high-detail',high+' · '+t.high.height.toFixed(2)+' m ('+t.datum+')');
@@ -112,6 +117,7 @@ function fromSnapshot(s){
    $('time').value = current.time;
  }
  const output=c.assess(base);
+ output.highs=c.highTidesForDay(base.events, current.date);
  output.outlook=outlook;
  output.slots=outlook.hours;
  output.sources=s.sources||{};
@@ -148,7 +154,7 @@ async function load(force=false){
   loaded=null;$('answer').className='answer unknown';set('state','NOT UPDATED');set('chosen',dayLabel(current.date)+' · '+current.time);
   set('headline','Cannot check yet');set('explain','No current published forecast is available. No conditions have been invented.');
   set('notice','The scheduled GitHub Actions snapshot could not be loaded. '+e.message);
-  set('window-main','Tide data unavailable');set('window-sub','A successful scheduled refresh is required.');
+  set('window-main','Tide data unavailable');set('window-sub','A successful scheduled refresh is required.');set('high-detail','—');set('rise-detail','—');
   for(const id of ['sea-temp','air-temp','feels-temp'])set(id,'—');
   set('sea-temp-source','Unavailable');set('feels-source','Unavailable');set('temperature-note','No forecast data.');
   set('stamp','No published snapshot yet.');
