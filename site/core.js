@@ -1,6 +1,7 @@
 'use strict';
 const DAY=86400000,HOUR=3600000,MIN=60000;
 const TZ='Europe/Dublin';
+const SEAPOINT_STATION = 'IEEABWC090_0000_0100_MODELLED';
 const dublinFormatter = new Intl.DateTimeFormat('en-GB',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 function dublinParts(t){
   const p=Object.fromEntries(dublinFormatter.formatToParts(new Date(t)).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
@@ -20,9 +21,17 @@ function fmtTime(t){return clockFormatter.format(t)}
 function parseTideCsv(csv){
   const lines=csv.trim().split(/\r?\n/); if(lines.length<5) return [];
   const hdr=lines[0].split(',').map(x=>x.trim().replaceAll('"',''));
-  const i=hdr.indexOf('time'),j=hdr.indexOf('Water_Level');if(i<0||j<0||!/metres?|meters?/i.test(lines[1]))return [];
-  const pts=[];
-  for(const line of lines.slice(2)){const p=line.split(','); const t=Date.parse(p[i]),v=Number(p[j]);if(p[j]?.trim() && Number.isFinite(t)&&Number.isFinite(v))pts.push({t,h:v});}
+  const time = hdr.indexOf('time'), height = hdr.indexOf('sea_surface_height'), station = hdr.indexOf('stationID');
+  const units = lines[1].split(',');
+  if (time < 0 || station < 0 || height < 0 || units[time]?.trim() !== 'UTC' ||
+      units[height]?.trim() !== 'metres') return [];
+  const pts = [];
+  for (const line of lines.slice(2)) {
+    const fields = line.split(',');
+    if (fields[station]?.replaceAll('"','') !== SEAPOINT_STATION) return [];
+    const t = Date.parse(fields[time]), h = Number(fields[height]);
+    if (fields[height]?.trim() && Number.isFinite(t) && Number.isFinite(h)) pts.push({t,h});
+  }
   return pts.sort((a,b)=>a.t-b.t);
 }
 function extrema(points){
@@ -55,11 +64,12 @@ function interpolatedLevel(points,t){
   while(hi-lo>1){const mid=Math.floor((lo+hi)/2);if(points[mid].t<=t)lo=mid;else hi=mid;}
   const a=points[lo],b=points[hi];if(t===a.t)return a.h;if(t===b.t)return b.h;if(b.t-a.t>30*MIN)return null;return a.h+(b.h-a.h)*(t-a.t)/(b.t-a.t);
 }
-function fallbackEvents(table){return table.map(({date,time,height,type})=>({t:localToUtc(date,time),h:height,type})).filter(e=>Number.isFinite(e.t)).sort((a,b)=>a.t-b.t)};
 function nearestHigh(events,t){const highs=events.filter(e=>e.type==='high');if(!highs.length)return null;
   const high=highs.reduce((x,y)=>Math.abs(y.t-t)<Math.abs(x.t-t)?y:x);
   if(Math.abs(high.t-t)>10*HOUR)return null;
-  const span=Math.min(4,Math.max(2,3+(high.h-3.85)*1.0));
+  // Median high in the Seapoint beach model for calendar 2026, in metres above model MSL.
+  const typicalHigh = 1.36;
+  const span = Math.min(4, Math.max(2, 3 + high.h - typicalHigh));
   return {...high,start:high.t-span*HOUR,end:high.t+span*HOUR,half:span};
 }
 function tideInfo(points,events,t){
@@ -69,13 +79,11 @@ function tideInfo(points,events,t){
   const after=lows.find(e=>e.t>high.t)||null;
   const low=t<=high.t?before:after;
   const level=points.length?interpolatedLevel(points,t):null;
-  const modelLow = low?.source === 'port-table' ? low.modelLowHeight : low?.h;
-  const aboveLow = level != null && Number.isFinite(modelLow) ? +(level - modelLow).toFixed(2) : null;
-  const sameDatum = low && high.source === low.source;
+  const aboveLow = level != null && low ? +(level - low.h).toFixed(2) : null;
   return {valid:true,high:{at:high.t,height:high.h},low:low?{at:low.t,height:low.h}:null,
     window:{start:high.start,end:high.end,hours:high.half},inside:t>=high.start&&t<=high.end,
-    selectedLevel:level!=null?+level.toFixed(2):null,aboveLow,range:sameDatum?+(high.h-low.h).toFixed(2):null,
-    datum:high.source === 'port-table' || !points.length ? 'Dublin Port chart datum' : 'LAT',heuristic:true};
+    selectedLevel:level!=null?+level.toFixed(2):null,aboveLow,range:low?+(high.h-low.h).toFixed(2):null,
+    datum:'above model mean sea level',heuristic:true};
 }
 const forecastTimes = new WeakMap();
 function atHour(f,date,time,maxGap=40){
@@ -152,6 +160,26 @@ function normaliseAlerts(json,t){
   }).map(x=>({title:String(x.description||x.alert_type||x.reason||'EPA bathing alert')}));
   return {verified:complete,active};
 }
+// NOAA solar equations. Longitude is east-positive; the apparent horizon is -0.833°.
+function estimatedSunTimes(date) {
+  const midnight = Date.parse(date + 'T00:00:00Z');
+  if (!Number.isFinite(midnight)) return {rise:null,set:null};
+  const year = new Date(midnight).getUTCFullYear();
+  const yearStart = Date.UTC(year, 0, 1);
+  const fraction = 2 * Math.PI * (midnight - yearStart) / (Date.UTC(year+1, 0, 1) - yearStart);
+  const {sin, cos, acos, PI} = Math;
+  const equation = 229.18 * (0.000075 + 0.001868*cos(fraction) - 0.032077*sin(fraction)
+    - 0.014615*cos(2*fraction) - 0.040849*sin(2*fraction));
+  const declination = 0.006918 - 0.399912*cos(fraction) + 0.070257*sin(fraction)
+    - 0.006758*cos(2*fraction) + 0.000907*sin(2*fraction)
+    - 0.002697*cos(3*fraction) + 0.00148*sin(3*fraction);
+  const rad = PI / 180, latitude = 53.29694 * rad, longitude = -6.15862;
+  const angle = acos((cos(90.833*rad) - sin(latitude)*sin(declination)) /
+    (cos(latitude)*cos(declination))) / rad;
+  const solarNoon = 720 - 4*longitude - equation;
+  return {rise:fmtTime(midnight + Math.round(solarNoon-4*angle)*MIN),
+    set:fmtTime(midnight + Math.round(solarNoon+4*angle)*MIN)};
+}
 function sunTimesForDay(daily, date) {
   const index = daily?.time?.indexOf(date) ?? -1;
   // The weather request already asks for local timestamps in Europe/Dublin.
@@ -160,7 +188,10 @@ function sunTimesForDay(daily, date) {
     const time = value.slice(11, 16);
     return /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null;
   }
-  return {rise: clock(daily?.sunrise?.[index]), set: clock(daily?.sunset?.[index])};
+  const rise = clock(daily?.sunrise?.[index]), set = clock(daily?.sunset?.[index]);
+  if (rise && set) return {rise,set};
+  const estimate = estimatedSunTimes(date);
+  return {rise:rise || estimate.rise, set:set || estimate.set};
 }
 function isDay(weather, date, time) {
   const sun = sunTimesForDay(weather?.daily, date);
@@ -219,7 +250,7 @@ function assess({date,time,points=[],events=[],wind=null,waves=null,seaTemp=null
   if(!warningList)caveats.push('Marine warnings could not be checked');
   if(!alerts.verified)caveats.push('Bathing alerts could not be checked');
   if(alerts.verified&&!alerts.active.length)caveats.push('No active bathing alerts found in checked feed');
-  if(sources?.tides?.fallback)caveats.push('Using a dated published tide table');
+  if(sources?.tides?.fallback)caveats.push('Using saved Seapoint beach predictions');
   return {date,time,at:new Date(selected).toISOString(),status,headline,explanation,
     tide,waves:{heightM:wavesM,periodS:wv?.wave_period??null,...waveGrade},wind:{speedKn:wk,gustKn:gust,direction:wh?.wind_direction_10m??null,...windGrade},
     temperature:{waterC,airC,feelsC,feelsLabel,windChillC:chill,apparentC,seaKind,waterSource:seaKind==='forecast'?'Open-Meteo marine SST model':seaKind==='offshore observation'?'Marine Institute M2 offshore buoy':'Unavailable',...thermal},
@@ -309,6 +340,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours};
 }
 
-const SeapointCore={highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,fallbackEvents,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

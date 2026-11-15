@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const SOURCE_LABEL={tideTable:'Dublin Port tide table',tide:'Marine Institute tides',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
+const SOURCE_LABEL={tide:'Marine Institute · Seapoint beach tide model',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
 const grades = {good:'Favourable', caution:'Caution', avoid:'Avoid', unknown:'Unknown'};
 function isSmallCraft(warning) {
   return !!warning && /\bsmall[ -]craft\b/i.test(warning.type + ' ' + warning.headline);
@@ -21,6 +21,7 @@ function choose(date, time, defaultDay = false) {
   const local = here();
   followBestTime = !time;
   current = {date, time: time || (date === local.date ? local.time : '14:00')};
+  renderSunTimes(window.SeapointCore.sunTimesForDay(snapshot?.wind?.daily, date));
   $('date').value = date;
   $('time').value = current.time;
   for (const [id, selected] of Object.entries({
@@ -37,7 +38,11 @@ function choose(date, time, defaultDay = false) {
   history.replaceState(null, '', url);
   load();
 }
-function renderDaily(outlook, daylight = {}, highs = []) {
+function renderSunTimes(daylight) {
+  set('sunrise', daylight.rise || 'Unavailable');
+  set('sunset', daylight.set || 'Unavailable');
+}
+function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null, current.date), highs = []) {
   const today = here().date;
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
@@ -45,8 +50,7 @@ function renderDaily(outlook, daylight = {}, highs = []) {
   set('daily-grade', outlook.start ? (isSmallCraft(outlook.warning) ? 'Coastal wind warning' : grades[outlook.status]) : '');
   set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);
   set('daily-reason', isSmallCraft(outlook.warning) ? coastalWarning : outlook.reason);
-  set('sunrise', daylight.rise || 'Unavailable');
-  set('sunset', daylight.set || 'Unavailable');
+  renderSunTimes(daylight);
   set('daily-highs', highs.map(e => fmtClock(e.t)).join(' and ') || 'Unavailable');
 }
 function set(id,s){$(id).textContent=s}
@@ -116,7 +120,7 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  for(const [id,meta] of Object.entries(data.sources||{})){
    const row=document.createElement('div');row.className='source-row';
    const a=document.createElement('a');a.href=meta.url||'#';a.target='_blank';a.rel='noopener';a.textContent=SOURCE_LABEL[id]||id;
-   const label=document.createElement('small');const good=meta.status==='ok',warn=meta.status==='stale'||meta.status==='published-copy';label.className=good?'good':warn?'warn':'bad';label.textContent=({ok:'Connected',stale:'Stale',unavailable:'Unavailable','published-copy':'Published table'})[meta.status]||meta.status;
+   const label=document.createElement('small');const good=meta.status==='ok',warn=meta.status==='stale'||meta.status==='published-copy';label.className=good?'good':warn?'warn':'bad';label.textContent=({ok:'Connected',stale:'Stale',unavailable:'Unavailable','published-copy':'Saved beach predictions'})[meta.status]||meta.status;
    if(meta.error)label.title=meta.error;row.append(a,label);sources.append(row);
  }
  if(data.buoy?.fresh && Number.isFinite(data.buoy.waveM)){const row=document.createElement('div');row.className='source-row';row.innerHTML='<span>Offshore buoy measurement</span><small class="good"></small>';row.lastChild.textContent=data.buoy.waveM.toFixed(1)+' m · '+fmt(data.buoy.at);sources.append(row)}
@@ -165,7 +169,7 @@ async function load(force=false){
   const r=await fetch('./data/conditions.json?cache_bust='+Math.floor(Date.now()/60000),{signal:ctl.signal,cache:'no-store'});
   if(!r.ok)throw Error('Snapshot HTTP '+r.status);
   const value=await r.json();
-  if(value.schemaVersion!==1)throw Error('Unsupported snapshot version');
+  if(value.schemaVersion!==2 || value.notes?.tides?.stationID!==window.SeapointCore.SEAPOINT_STATION)throw Error('Waiting for a Seapoint beach forecast');
   if(n!==seq)return;
   snapshot=value;
   if (chooseDayFromForecast) {
@@ -194,7 +198,7 @@ $('date').onchange=()=>choose($('date').value||here().date);
 $('time').onchange=()=>choose(current.date||here().date,$('time').value||'14:00');
 $('refresh').onclick=()=>load(true);
 const p=new URLSearchParams(location.search),local=here(),validDate=/^20\d{2}-\d{2}-\d{2}$/.test(p.get('date')||''),validTime=/^([01]\d|2[0-3]):[0-5]\d$/.test(p.get('time')||'');
-const date = validDate ? p.get('date') : local.date;
+const date = validDate ? p.get('date') : validTime ? local.date : window.SeapointCore.defaultSwimDate(null, Date.now());
 choose(date, validTime ? p.get('time') : undefined, !validDate && !validTime);
 
 // Keep the remaining window and snapshot age accurate when a tab stays open.
