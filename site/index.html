@@ -14,6 +14,10 @@
    <div class="daily-meta"><span id="daily-day">Best swim window</span><span id="daily-grade"></span></div>
    <h2 id="daily-period">Checking the forecast…</h2>
    <p id="daily-reason">Looking for the best daylight swim window at Seapoint.</p>
+   <dl class="sun-times" aria-label="Daylight times in Dublin">
+     <div><dt>Sunrise</dt><dd id="sunrise">…</dd></div>
+     <div><dt>Sunset</dt><dd id="sunset">…</dd></div>
+   </dl>
  </section>
  <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><div class="dublin-time">All times are local to Dublin</div></section>
  <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h2 id="headline">Checking conditions…</h2><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><div class="summary-grid" aria-label="Main swimming factors">

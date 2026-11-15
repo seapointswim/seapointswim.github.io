@@ -137,14 +137,26 @@ function normaliseAlerts(json,t){
   }).map(x=>({title:String(x.description||x.alert_type||x.reason||'EPA bathing alert')}));
   return {verified:complete,active};
 }
-function isDay(weather,date,time){
-  const i=weather?.daily?.time?.indexOf(date)??-1;
-  if(i>=0&&weather.daily.sunrise?.[i]&&weather.daily.sunset?.[i]){
-    const t=localToUtc(date,time),rise=localToUtc(date,weather.daily.sunrise[i].slice(11,16)),set=localToUtc(date,weather.daily.sunset[i].slice(11,16));
-    return {ok:t>=rise+15*MIN&&t<=set-25*MIN,rise:fmtTime(rise),set:fmtTime(set)};
+function sunTimesForDay(daily, date) {
+  const index = daily?.time?.indexOf(date) ?? -1;
+  // The weather request already asks for local timestamps in Europe/Dublin.
+  function clock(value) {
+    if (typeof value !== 'string' || !value.startsWith(date + 'T')) return null;
+    const time = value.slice(11, 16);
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null;
   }
-  const h=atHour(weather,date,time);
-  return h&&Number.isFinite(h.is_day)?{ok:!!h.is_day}: {ok:null};
+  return {rise: clock(daily?.sunrise?.[index]), set: clock(daily?.sunset?.[index])};
+}
+function isDay(weather, date, time) {
+  const sun = sunTimesForDay(weather?.daily, date);
+  if (sun.rise && sun.set) {
+    const selected = localToUtc(date, time);
+    const start = localToUtc(date, sun.rise) + 15 * MIN;
+    const end = localToUtc(date, sun.set) - 25 * MIN;
+    return {...sun, ok: selected >= start && selected <= end};
+  }
+  const hour = atHour(weather, date, time);
+  return {...sun, ok: Number.isFinite(hour?.is_day) ? Boolean(hour.is_day) : null};
 }
 function assess({date,time,points=[],events=[],wind=null,waves=null,seaTemp=null,buoyTemp=null,warningFeed=null,alertsFeed=null,sources={},now=Date.now()}){
   const selected=localToUtc(date,time);const tide=tideInfo(points,events,selected);
@@ -215,10 +227,9 @@ function longestSwimWindow(samples, allowMixed) {
 
 function defaultSwimDate(wind, now) {
   const local = dublinParts(now);
-  const index = wind?.daily?.time?.indexOf(local.date) ?? -1;
-  const sunset = wind?.daily?.sunset?.[index];
+  const sunset = sunTimesForDay(wind?.daily, local.date).set;
   if (!sunset) return local.date;
-  const endOfWindow = localToUtc(local.date, sunset.slice(11, 16)) - 25 * MIN;
+  const endOfWindow = localToUtc(local.date, sunset) - 25 * MIN;
   if (now < endOfWindow) return local.date;
   return new Date(Date.parse(local.date + 'T12:00:00Z') + DAY).toISOString().slice(0, 10);
 }

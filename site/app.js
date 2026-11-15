@@ -32,7 +32,7 @@ function choose(date, time, defaultDay = false) {
   history.replaceState(null, '', url);
   load();
 }
-function renderDaily(outlook) {
+function renderDaily(outlook, daylight = {}) {
   const today = here().date;
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
@@ -40,10 +40,12 @@ function renderDaily(outlook) {
   set('daily-grade', outlook.start ? (outlook.status === 'good' ? 'Favourable' : 'Mixed conditions') : '');
   set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);
   set('daily-reason', outlook.reason);
+  set('sunrise', daylight.rise || 'Unavailable');
+  set('sunset', daylight.set || 'Unavailable');
 }
 function showStatus(id,s){const el=$(id);el.className='factor-icon '+s;el.textContent=s==='good'?'✓':s==='caution'?'!':s==='avoid'?'×':'?';}
 function set(id,s){$(id).textContent=s}
-function render(data){renderDaily(data.outlook);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
+function render(data){renderDaily(data.outlook, data.daylight);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
  set('state',states[status][0]);set('chosen','At '+data.time+' · '+dayLabel(data.date));set('headline',data.headline);set('explain',data.explanation);
  const t=data.tide,w=data.waves,wind=data.wind;
  set('tide-main',t?.valid?(t.inside?'In window':'Outside window'):'Unavailable');showStatus('tide-symbol',t?.valid?(t.inside?'good':'avoid'):'unknown');
