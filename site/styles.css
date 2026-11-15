@@ -22,3 +22,21 @@ button,input{font:inherit}button{cursor:pointer}a{color:#155d69;text-decoration:
 footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;color:#82999c}.noscript{padding:20px;color:#a6443d}
 @media(min-width:540px){.app{padding:0 30px}.summary-grid>div{display:grid;grid-template-columns:18px 1fr;column-gap:4px;row-gap:5px}.summary-grid span:last-child{grid-column:2}.answer{padding:28px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.daily {
+  --tone: #34515b;
+  --wash: #eaf0f2;
+  color: var(--tone);
+  background: var(--wash);
+  border: 1px solid color-mix(in srgb, var(--tone) 20%, white);
+  border-radius: 20px;
+  margin: 0 0 15px;
+  padding: 18px 20px;
+}
+.daily.good { --tone: #105848; --wash: #e3f3ec; }
+.daily.caution { --tone: #765018; --wash: #fbf1db; }
+.daily.avoid { --tone: #8b3934; --wash: #f9ece9; }
+.daily-meta { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 13px; font-weight: 750; }
+#daily-grade { font-size: 12px; }
+.daily h2 { font-size: clamp(26px, 7.8vw, 44px); margin: 9px 0 6px; letter-spacing: -.045em; line-height: 1.06; font-variant-numeric: tabular-nums; }
+.daily p { margin: 0; font-size: 14px; line-height: 1.45; }

@@ -9,14 +9,19 @@
 <div class="app">
  <header class="topbar"><div class="brand-icon" aria-hidden="true">≋</div><div class="brand"><strong>seapoint<span>swim</span></strong><span>SEA SWIMMING · DUBLIN</span></div><button class="refresh" id="refresh" title="Check conditions again" type="button">↻ <span>Refresh</span></button></header>
  <main>
- <div class="intro"><h1>Worth a dip?</h1><p>Choose when you want to swim.</p></div>
- <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><div class="dublin-time">All times are local to Dublin</div></section>
+ <div class="intro"><h1>Worth a dip?</h1></div>
+ <section id="daily" class="daily unknown" aria-label="Best swim window" aria-live="polite" aria-atomic="true">
+   <div class="daily-meta"><span id="daily-day">Best swim window</span><span id="daily-grade"></span></div>
+   <h2 id="daily-period">Checking the forecast…</h2>
+   <p id="daily-reason">Looking for the best daylight swim window at Seapoint.</p>
+ </section>
+ <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><div class="dublin-time">All times are local to Dublin</div></section>
  <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h2 id="headline">Checking conditions…</h2><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><div class="summary-grid" aria-label="Main swimming factors">
  <div><span class="factor-icon" id="tide-symbol">○</span><strong>Tide</strong><span id="tide-main">Checking</span></div>
  <div><span class="factor-icon" id="wave-symbol">○</span><strong>Waves</strong><span id="wave-main">Checking</span></div>
  <div><span class="factor-icon" id="wind-symbol">○</span><strong>Wind</strong><span id="wind-main">Checking</span></div></div></section>
  <section class="temperature-brief" id="temperature-brief" aria-label="Water and air temperatures">
- <div class="temperature-heading"><strong>How cold will it feel?</strong><span>At your chosen swim time</span></div>
+ <div class="temperature-heading"><strong>Sea and air temperature</strong><span>At your chosen swim time</span></div>
  <div class="temperature-grid">
    <div class="temperature-metric"><small>🌊 SEA</small><strong id="sea-temp">—</strong><span id="sea-temp-source">Checking forecast</span></div>
    <div class="temperature-metric"><small>☀ AIR</small><strong id="air-temp">—</strong><span>Forecast temperature</span></div>
@@ -30,6 +35,7 @@
  <details id="more" class="details"><summary>See readings and sources <span>+</span></summary><div class="detail-content">
  <div class="readings"><div class="reading"><small>PREDICTED HIGH TIDE</small><strong id="high-detail">—</strong></div><div class="reading"><small>HEIGHT ABOVE ADJACENT LOW</small><strong id="rise-detail">—</strong></div><div class="reading"><small>WAVES · MODELLED</small><strong id="wave-detail">—</strong></div><div class="reading"><small>WIND · FORECAST</small><strong id="wind-detail">—</strong></div><div class="reading"><small>SEA TEMPERATURE · FORECAST OR OFFSHORE</small><strong id="sea-detail">—</strong></div><div class="reading"><small>AIR / WIND CHILL · FORECAST / CALCULATED</small><strong id="chill-detail">—</strong></div></div>
  <p class="tiny">A tide height is not the water depth at the Seapoint steps. The approximate ±3-hour rule around high water varies with the height of high tide; it is not a validated swimming threshold.</p>
+ <p class="tiny">The planner excludes periods with sustained winds of 22 kn or more, onshore winds of 19 kn or more, or gusts of 29 kn or more. These are planning cut-offs. Met Éireann classifies 22 kn as a <a href="https://www.met.ie/forecasts/marine-inland-lakes/beaufort-scale">strong breeze</a>.</p>
  <p class="tiny">Water below 15°C brings cold-water shock risk (RNLI). The wind-chill index estimates how cold exposed, dry skin feels in moving air, not wet-skin cooling after a swim. Sea temperatures are forecast at a nearby model grid cell, not measured at Seapoint. Any M2 buoy reading is offshore.</p>
  <p class="tiny">An old routine EPA water sample does not automatically reduce the recommendation. Active warnings/restrictions matter. The buoy is offshore; its waves are not necessarily those at Seapoint. Check ferry wash and exit conditions.</p>
  <h4>Data connections</h4><div class="source-list" id="sources"><div>Waiting for data…</div></div><div class="update-stamp" id="stamp">Not yet checked</div>
