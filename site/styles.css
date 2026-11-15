@@ -43,3 +43,4 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 .sun-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--tone) 22%, transparent); }
 .sun-times dt { font-size: 14px; font-weight: 650; }
 .sun-times dd { margin: 2px 0 0; font-size: clamp(19px, 5vw, 26px); line-height: 1.2; font-weight: 750; font-variant-numeric: tabular-nums; }
+.daily-tides { grid-column: 1 / -1; }

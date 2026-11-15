@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=daylight2">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=tides3">
 </head>
 <body>
 <div class="app">
@@ -14,9 +14,10 @@
    <div class="daily-meta"><span id="daily-day">Best swim window</span><span id="daily-grade"></span></div>
    <h2 id="daily-period">Checking the forecast…</h2>
    <p id="daily-reason">Looking for the best daylight swim window at Seapoint.</p>
-   <dl id="daylight" class="sun-times" aria-label="Daylight times in Dublin">
+   <dl id="daylight" class="sun-times" aria-label="Daylight and high tides in Dublin">
      <div><dt>Sunrise</dt><dd id="sunrise">…</dd></div>
      <div><dt>Sunset</dt><dd id="sunset">…</dd></div>
+     <div class="daily-tides"><dt>High tides · Dublin Port</dt><dd id="daily-highs">…</dd></div>
    </dl>
  </section>
  <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><div class="dublin-time">All times are local to Dublin</div></section>
@@ -47,6 +48,6 @@
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=daylight1" defer></script>
-<script src="./app.js?v=daylight1" defer></script>
+<script src="./core.js?v=tides3" defer></script>
+<script src="./app.js?v=tides3" defer></script>
 </body></html>

@@ -22,19 +22,32 @@ function parseTideCsv(csv){
   const hdr=lines[0].split(',').map(x=>x.trim().replaceAll('"',''));
   const i=hdr.indexOf('time'),j=hdr.indexOf('Water_Level');if(i<0||j<0||!/metres?|meters?/i.test(lines[1]))return [];
   const pts=[];
-  for(const line of lines.slice(2)){const p=line.split(','); const t=Date.parse(p[i]),v=Number(p[j]);if(Number.isFinite(t)&&Number.isFinite(v))pts.push({t,h:v});}
+  for(const line of lines.slice(2)){const p=line.split(','); const t=Date.parse(p[i]),v=Number(p[j]);if(p[j]?.trim() && Number.isFinite(t)&&Number.isFinite(v))pts.push({t,h:v});}
   return pts.sort((a,b)=>a.t-b.t);
 }
 function extrema(points){
-  const res=[];for(let i=1;i<points.length-1;i++){
-    const a=points[i-1],b=points[i],c=points[i+1];
-    let type=null;if(b.h>=a.h&&b.h>c.h)type='high';else if(b.h<=a.h&&b.h<c.h)type='low';
-    if(!type)continue;
-    const prev=res[res.length-1];
-    if(prev && b.t-prev.t<3.5*HOUR){ if(prev.type===type&&((type==='high'&&b.h>prev.h)||(type==='low'&&b.h<prev.h)))res[res.length-1]={...b,type}; continue;}
-    res.push({...b,type});
+  const events = [];
+  // Rounded heights can stay flat even on a rising or falling tide.
+  // Only a change of direction across the whole plateau is a turning point.
+  for (let start = 0; start < points.length;) {
+    let end = start;
+    while (end + 1 < points.length && points[end+1].h === points[start].h &&
+        points[end+1].t - points[end].t <= 30*MIN) end++;
+    const before = points[start-1], after = points[end+1], h = points[start].h;
+    if (before && after && points[start].t - before.t <= 30*MIN && after.t - points[end].t <= 30*MIN) {
+      const high = before.h < h && after.h < h;
+      const low = before.h > h && after.h > h;
+      if (high || low) {
+        const t = Math.round((points[start].t + points[end].t) / (2*MIN)) * MIN;
+        events.push({t, h, type:high ? 'high' : 'low'});
+      }
+    }
+    start = end + 1;
   }
-  return res;
+  return events;
+}
+function highTidesForDay(events, date) {
+  return events.filter(e => e.type === 'high' && dublinParts(e.t).date === date);
 }
 function interpolatedLevel(points,t){
   if(points.length<2||t<points[0].t||t>points[points.length-1].t)return null;
@@ -56,11 +69,13 @@ function tideInfo(points,events,t){
   const after=lows.find(e=>e.t>high.t)||null;
   const low=t<=high.t?before:after;
   const level=points.length?interpolatedLevel(points,t):null;
-  const aboveLow=level!=null&&low!=null?+(level-low.h).toFixed(2):null;
+  const modelLow = low?.source === 'port-table' ? low.modelLowHeight : low?.h;
+  const aboveLow = level != null && Number.isFinite(modelLow) ? +(level - modelLow).toFixed(2) : null;
+  const sameDatum = low && high.source === low.source;
   return {valid:true,high:{at:high.t,height:high.h},low:low?{at:low.t,height:low.h}:null,
     window:{start:high.start,end:high.end,hours:high.half},inside:t>=high.start&&t<=high.end,
-    selectedLevel:level!=null?+level.toFixed(2):null,aboveLow,range:low?+(high.h-low.h).toFixed(2):null,
-    datum:points.length?'LAT':'Dublin Port chart datum',heuristic:true};
+    selectedLevel:level!=null?+level.toFixed(2):null,aboveLow,range:sameDatum?+(high.h-low.h).toFixed(2):null,
+    datum:high.source === 'port-table' || !points.length ? 'Dublin Port chart datum' : 'LAT',heuristic:true};
 }
 const forecastTimes = new WeakMap();
 function atHour(f,date,time,maxGap=40){
@@ -294,6 +309,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours};
 }
 
-const SeapointCore={defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,fallbackEvents,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,fallbackEvents,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

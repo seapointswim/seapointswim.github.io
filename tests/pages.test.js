@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {buildSnapshot,mergeWaveForecast,parseBuoyCsv}=require('../scripts/update-data');
 const core=require('../site/core');
+const {portTableEvents} = require('../scripts/port-tides');
 const now=Date.parse('2026-11-15T08:00:00Z');
 const day='2026-11-15';
 const hours=Array.from({length:8*24},(_,i)=>new Date(Date.parse(day+'T00:00:00Z')+i*3600000).toISOString().slice(0,16));
@@ -19,9 +20,10 @@ function cosineTideCSV(){
  return s;
 }
 function okText(text){return {ok:true,json:async()=>JSON.parse(text),text:async()=>text};}
-function makeFetch({tide=true,wind=true,waves=true,warning=true,alerts=true}={}){
+function makeFetch({table=null,tide=true,wind=true,waves=true,warning=true,alerts=true}={}){
  return async input=>{
   const u=new URL(input);
+  if (u.hostname === 'www.dublinport.ie') return table ? okText(table) : {ok:false,status:503};
   if (u.hostname === 'erddap.marine.ie') {
     const constraints = decodeURIComponent(u.search).split('&').slice(1);
     const times = constraints.filter(part => part.startsWith('time'));
@@ -53,7 +55,7 @@ test('Github Pages paths are relative and browser core is loaded',()=>{
 });
 test('mocked upstreams yield a complete snapshot for selected day',async()=>{
  const d=await buildSnapshot({fetchImpl:makeFetch(),now});
- for(const meta of Object.values(d.sources))assert.equal(meta.status,'ok',JSON.stringify(meta));
+ for(const [id,meta] of Object.entries(d.sources))assert.equal(meta.status,id==='tideTable'?'unavailable':'ok',JSON.stringify(meta));
  assert.ok(d.tidePoints.length>1000);assert.ok(d.events.length>20);
  const a=assess(d);
  assert.equal(a.waves.heightM,.25);assert.equal(a.wind.speedKn,6);
@@ -193,4 +195,46 @@ test('sunrise and sunset follow the selected Dublin date independently of the sw
  weather.daily.sunrise[1] = null;
  assert.deepEqual(core.isDay(weather,winter,'08:15'),{rise:null,set:'16:24',ok:null});
  assert.deepEqual(core.isDay(weather,'2026-12-01','08:15'),{rise:null,set:null,ok:null});
+});
+
+test('rounded rising and falling shoulders are not turning points', () => {
+ const start = Date.parse('2026-11-16T08:50:00Z');
+ const heights = [1.77,1.76,1.76,1.75,1.74,1.74,1.74,1.75,1.76,1.76,1.77,1.78,1.78,1.78,1.77];
+ const points = heights.map((h,i) => ({h,t:start+i*5*60000}));
+ assert.deepEqual(core.extrema(points), [
+   {type:'low',h:1.74,t:points[5].t}, {type:'high',h:1.78,t:points[12].t}
+ ]);
+ const gapped = [points[0],points[4],{...points[8],t:start+2*3600000}];
+ assert.deepEqual(core.extrema(gapped), []);
+});
+const portRows = [
+ ['2026-11-15','21:13','1.34'], ['2026-11-16','03:51','3.29'],
+ ['2026-11-16','09:31','1.64'], ['2026-11-16','15:59','3.52'],
+ ['2026-11-16','22:12','1.43'], ['2026-11-17','04:58','3.20']
+];
+function tableHtml(rows) {
+ return '<table id="table_example"><tbody>'+rows.map(([d,t,h]) =>
+   '<tr><td>'+d+'</td><td>'+t+':00</td><td>'+h+'</td></tr>').join('')+'</tbody></table>';
+}
+test('published highs drive both the selected day display and the swim window', async () => {
+ const table = tableHtml([...portRows].reverse());
+ for (const tide of [true,false]) {
+   const s = await buildSnapshot({fetchImpl:makeFetch({table,tide}),now:Date.parse('2026-11-15T21:00Z')});
+   assert.equal(s.sources.tideTable.status,'ok');
+   assert.deepEqual(core.highTidesForDay(s.events,'2026-11-16').map(e=>core.fmtTime(e.t)),['03:51','15:59']);
+   const morning = assess(s,'2026-11-16','09:30'), afternoon = assess(s,'2026-11-16','15:00');
+   assert.equal(morning.tide.inside,false);
+   assert.equal(afternoon.tide.inside,true);
+   assert.equal(core.fmtTime(afternoon.tide.high.at),'15:59');
+   assert.equal(afternoon.tide.datum,'Dublin Port chart datum');
+   const plan = core.dailyOutlook({date:'2026-11-16',now,points:s.tidePoints,events:s.events,
+     wind:s.wind,waves:s.waves,warningFeed:s.warningFeed,alertsFeed:s.alertsFeed});
+   assert.ok(plan.start >= '13:00' && plan.end >= '15:00');
+ }
+ assert.throws(()=>portTableEvents(tableHtml(portRows.filter(row=>row[1]!=='09:31'))));
+});
+test('a high just after local midnight belongs to the new Dublin day in summer', () => {
+ const event = {type:'high',t:Date.parse('2026-06-14T23:25:00Z'),h:3.4};
+ assert.deepEqual(core.highTidesForDay([event],'2026-06-14'),[]);
+ assert.deepEqual(core.highTidesForDay([event],'2026-06-15'),[event]);
 });

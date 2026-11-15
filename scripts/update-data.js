@@ -2,7 +2,8 @@
 /** Scheduled snapshot builder for static GitHub Pages. No API keys or dependencies. */
 const fs = require('node:fs');
 const path = require('node:path');
-const {parseTideCsv, extrema, fallbackEvents, dublinParts} = require('../site/core.js');
+const {parseTideCsv, extrema, fallbackEvents} = require('../site/core.js');
+const {PORT_TABLE, portTableEvents, withPortTable} = require('./port-tides');
 const {OFFICIAL_TIDES} = require('./tides-2026.js');
 
 const ROOT = path.resolve(__dirname, '../site/data/conditions.json');
@@ -10,6 +11,7 @@ const NOW = () => Date.now();
 const HOUR = 3600000;
 const EPS = 1e-8;
 const PROVIDERS={
+  tideTable: {name:'Dublin Port · published tide table',url:PORT_TABLE},
   tide: {name:'Marine Institute · Dublin Port tide prediction',url:'https://erddap.marine.ie/erddap/info/imiTidePrediction/index.html'},
   wind: {name:'Open-Meteo · local wind and air temperature forecast',url:'https://open-meteo.com/en/docs'},
   waves: {name:'Open-Meteo · nearby offshore wave forecast',url:'https://open-meteo.com/en/docs/marine-weather-api'},
@@ -27,9 +29,9 @@ function failure(e){return e?.name==='AbortError'?'Timeout':String(e?.message||e
 async function readRemote(urlText, type, fetchImpl, timeout=12000){
   const abort=new AbortController(), timer=setTimeout(()=>abort.abort(),timeout);
   try{
-    const r=await fetchImpl(urlText,{signal:abort.signal,headers:{'Accept':type==='csv'?'text/csv':'application/json','User-Agent':'SeapointSwim-GitHubPages/1.0'}});
+    const r=await fetchImpl(urlText,{signal:abort.signal,headers:{'Accept':({csv:'text/csv',html:'text/html',json:'application/json'})[type],'User-Agent':'SeapointSwim-GitHubPages/1.0'}});
     if(!r.ok)throw new Error(`HTTP ${r.status} from ${new URL(urlText).hostname}`);
-    const data=type==='csv'?await r.text():await r.json();
+    const data=type==='json'?await r.json():await r.text();
     if(data?.error)throw new Error(data.reason||'Provider returned error');
     return data;
   }finally{clearTimeout(timer)}
@@ -96,6 +98,11 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now()}={}){
   });
   const buoyUrl='https://erddap.marine.ie/erddap/tabledap/IWBNetwork.csv?time%2CWindSpeed%2CWaveHeight%2CSeaTemperature&'+'station_id=%22M2%22&' + encodeURIComponent('time>=' + iso(now-12*HOUR));
   const promises={
+    tideTable:attempt('tideTable',async()=>{
+      const rows = portTableEvents(await readRemote(PORT_TABLE, 'html', fetchImpl));
+      if (rows.at(-1).t < now || rows[0].t > now + 24*HOUR) throw Error('Tide table does not cover the forecast');
+      return rows;
+    }),
     tide:attempt('tide',async()=>{
       const csv=await readRemote(tideUrl,'csv',fetchImpl);
       const pts=parseTideCsv(csv);
@@ -136,12 +143,14 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now()}={}){
   const found=Object.fromEntries(ids.map((id,i)=>[id,values[i]]));
   let tidePoints=found.tide.value||[];
   let events=extrema(tidePoints),sourceFallback=false;
+  if (found.tideTable.value) {
+    events = withPortTable(events, found.tideTable.value);
+  }
   if(!events.length){
     // Only dated, previously-published Dublin Port events, not invented times.
     const known=fallbackEvents(OFFICIAL_TIDES);
-    const d=dublinParts(now).date;
     if(known.some(e=>e.t>=now-24*HOUR&&e.t<now+48*HOUR)){
-      tidePoints=[];events=known;sourceFallback=true;
+      tidePoints=[];events=withPortTable([], known);sourceFallback=true;
       found.tide.meta={...found.tide.meta,status:'published-copy',error:found.tide.meta.error||'Live tide feed unavailable; using dated official table'};
     }
   }
