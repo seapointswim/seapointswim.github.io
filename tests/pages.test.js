@@ -96,3 +96,80 @@ test('buoy age and temperature parsed as an offshore observation',()=>{
  const csv='time,WindSpeed,WaveHeight,SeaTemperature\nUTC,knots,metres,degree_C\n2026-11-15T07:00:00Z,4.3,0.4,10.4\n';
  const b=parseBuoyCsv(csv,now);assert.equal(b.fresh,true);assert.equal(b.waterC,10.4);
 });
+
+async function dayInput() {
+ const s = await buildSnapshot({fetchImpl:makeFetch(),now});
+ return {date:day, now, points:s.tidePoints, events:s.events, wind:s.wind,
+   waves:s.waves, seaTemp:s.seaTemp, warningFeed:s.warningFeed, alertsFeed:s.alertsFeed};
+}
+
+test('top answer gives a continuous daylight period and a time inside it', async () => {
+ const input = await dayInput();
+ const plan = core.dailyOutlook(input);
+ assert.equal(plan.status, 'good');
+ assert.ok(plan.start < plan.end);
+ assert.ok(plan.start <= plan.pick && plan.pick <= plan.end);
+ assert.ok(plan.start >= '08:05' && plan.end <= '15:57');
+ for (let t = core.localToUtc(day,plan.start); t <= core.localToUtc(day,plan.end); t += 15*60000) {
+   assert.equal(core.assess({...input,time:core.fmtTime(t)}).status,'good');
+ }
+});
+
+test('very cold water and wind chill do not affect the period or its grade', async () => {
+ const input = await dayInput();
+ const normal = core.dailyOutlook(input);
+ input.seaTemp.hourly.sea_surface_temperature.fill(5);
+ input.wind.hourly.temperature_2m.fill(-4);
+ input.wind.hourly.apparent_temperature.fill(-9);
+ const cold = core.dailyOutlook(input);
+ assert.deepEqual(cold, normal);
+ assert.equal(core.assess({...input,time:cold.pick}).temperature.waterC,5);
+});
+
+test('strong winds and strong gusts each exclude an otherwise suitable day', async () => {
+ const input = await dayInput();
+ for (const [speed,gust] of [[22,26],[10,29]]) {
+   input.wind.hourly.wind_speed_10m.fill(speed);
+   input.wind.hourly.wind_gusts_10m.fill(gust);
+   const plan = core.dailyOutlook(input);
+   assert.equal(plan.title,'Too windy for a dip');
+   assert.equal(plan.start,undefined);
+   assert.match(plan.reason,/wind|gust/i);
+ }
+ assert.equal(core.windStatus(null,31,null).status,'avoid');
+ assert.equal(core.windStatus(19,23,60).status,'avoid');
+});
+
+test('a gusty hour breaks the window, and today only shows time still ahead', async () => {
+ const input = await dayInput();
+ const start = core.dailyOutlook(input).start;
+ input.wind.hourly.wind_gusts_10m[14]=34;
+ const split = core.dailyOutlook(input);
+ assert.equal(split.status,'good');
+ assert.ok(split.end <= '13:30' || split.start >= '14:45');
+ const later = core.dailyOutlook({...input,now:core.localToUtc(day, '14:46')});
+ assert.ok(later.start >= '15:00' && later.start > start);
+ const dark = core.dailyOutlook({...input,now:core.localToUtc(day, '20:00')});
+ assert.equal(dark.title,'No daylight window left');
+ assert.equal(dark.start,undefined);
+});
+
+test('a warning is shown on a mixed window and a bathing restriction removes it', async () => {
+ const input = await dayInput();
+ input.warningFeed = [{regions:['EI810'],headline:'Small Craft warning',level:'Yellow'}];
+ const mixed = core.dailyOutlook(input);
+ assert.equal(mixed.status,'caution');
+ assert.equal(mixed.reason,'Small Craft warning');
+ input.alertsFeed = {count:1,list:[{beach_id:'IEEABWC090_0000_0100',start_date:day,end_date:day}]};
+ assert.equal(core.dailyOutlook(input).start,undefined);
+ assert.match(core.dailyOutlook(input).reason,/bathing-water/);
+});
+
+test('missing wind, warnings or bathing notices cannot produce a recommended period', async () => {
+ const input = await dayInput();
+ for (const missing of ['wind','warningFeed','alertsFeed']) {
+   const plan=core.dailyOutlook({...input,[missing]:null});
+   assert.equal(plan.status,'unknown',missing);
+   assert.equal(plan.start,undefined,missing);
+ }
+});
