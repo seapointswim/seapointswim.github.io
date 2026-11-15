@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=tides3">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=forecast4">
 </head>
 <body>
 <div class="app">
  <header class="topbar"><div class="brand-icon" aria-hidden="true">≋</div><div class="brand"><strong>seapoint<span>swim</span></strong><span>SEA SWIMMING · DUBLIN</span></div><button class="refresh" id="refresh" title="Check conditions again" type="button">↻ <span>Refresh</span></button></header>
  <main>
  <div class="intro"><h1>Worth a dip?</h1></div>
- <section id="daily" class="daily unknown" aria-label="Best swim window" aria-live="polite" aria-atomic="true">
-   <div class="daily-meta"><span id="daily-day">Best swim window</span><span id="daily-grade"></span></div>
+ <section id="daily" class="daily unknown" aria-label="Best forecast window" aria-live="polite" aria-atomic="true">
+   <div class="daily-meta"><span id="daily-day">Best forecast window</span><span id="daily-grade"></span></div>
    <h2 id="daily-period">Checking the forecast…</h2>
    <p id="daily-reason">Looking for the best daylight swim window at Seapoint.</p>
    <dl id="daylight" class="sun-times" aria-label="Daylight and high tides in Dublin">
@@ -21,10 +21,12 @@
    </dl>
  </section>
  <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><div class="dublin-time">All times are local to Dublin</div></section>
- <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h2 id="headline">Checking conditions…</h2><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><div class="summary-grid" aria-label="Main swimming factors">
- <div><span class="factor-icon" id="tide-symbol">○</span><strong>Tide</strong><span id="tide-main">Checking</span></div>
- <div><span class="factor-icon" id="wave-symbol">○</span><strong>Waves</strong><span id="wave-main">Checking</span></div>
- <div><span class="factor-icon" id="wind-symbol">○</span><strong>Wind</strong><span id="wind-main">Checking</span></div></div></section>
+ <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h2 id="headline">Checking conditions…</h2><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
+   <div><dt>Tide</dt><dd id="tide-main">Checking…</dd><dd class="reading-value" id="tide-value"></dd></div>
+   <div><dt>Waves</dt><dd id="wave-main">Checking…</dd><dd class="reading-value" id="wave-value"></dd></div>
+   <div><dt>Wind</dt><dd id="wind-main">Checking…</dd><dd class="reading-value" id="wind-value"></dd></div>
+ </dl>
+ <p class="shore-check">These are forecasts. At the steps, check the water and make sure you can get out easily.</p></section>
  <section class="temperature-brief" id="temperature-brief" aria-label="Water and air temperatures">
  <div class="temperature-heading"><strong>Sea and air temperature</strong><span>At your chosen swim time</span></div>
  <div class="temperature-grid">
@@ -35,8 +37,8 @@
  <p class="temperature-note" id="temperature-note">Checking water temperature and how cold it may feel after your swim.</p>
  </section>
  <section class="tide-brief" aria-label="High tide and swimming window"><div class="tide-icon" aria-hidden="true">↕</div><div class="tide-text"><small>YOUR TIDE WINDOW <span class="approx">· APPROXIMATE</span></small><strong id="window-main">Checking high tide…</strong><span id="window-sub">The window depends on the height of high water.</span></div></section>
- <section class="timeline" aria-label="Alternative swimming times"><div class="section-heading"><h3>Other times that day</h3><span id="hour-day">Tap an hour to check</span></div><div class="hours" id="hours"><div class="hours-placeholder">Checking the hourly outlook…</div></div><div class="hour-key"><span><i class="key-dot good"></i> Favourable</span><span><i class="key-dot caution"></i> Mixed</span><span><i class="key-dot avoid"></i> Avoid</span><span><i class="key-dot unknown"></i> Unknown</span></div></section>
- <section id="note" class="note"><span class="note-symbol">i</span><p id="notice">Water conditions can change. Check the entry steps and any posted notices before swimming.</p></section>
+ <section class="timeline" aria-label="Alternative swimming times"><div class="section-heading"><h3>Other times that day</h3><span id="hour-day">Tap an hour to check</span></div><div class="hours" id="hours"><div class="hours-placeholder">Checking the hourly outlook…</div></div></section>
+ <section id="note" class="note"><span class="note-symbol">i</span><div><p id="notice">Check the local notices before swimming.</p><a id="warning-guide" href="https://www.met.ie/weather-warnings" hidden>How Met Éireann defines a Small Craft Warning</a></div></section>
  <details id="more" class="details"><summary>See readings and sources <span>+</span></summary><div class="detail-content">
  <div class="readings"><div class="reading"><small>PREDICTED HIGH TIDE</small><strong id="high-detail">—</strong></div><div class="reading"><small>HEIGHT ABOVE ADJACENT LOW</small><strong id="rise-detail">—</strong></div><div class="reading"><small>WAVES · MODELLED</small><strong id="wave-detail">—</strong></div><div class="reading"><small>WIND · FORECAST</small><strong id="wind-detail">—</strong></div><div class="reading"><small>SEA TEMPERATURE · FORECAST OR OFFSHORE</small><strong id="sea-detail">—</strong></div><div class="reading"><small>AIR / WIND CHILL · FORECAST / CALCULATED</small><strong id="chill-detail">—</strong></div></div>
  <p class="tiny">A tide height is not the water depth at the Seapoint steps. The approximate ±3-hour rule around high water varies with the height of high tide; it is not a validated swimming threshold.</p>
@@ -48,6 +50,6 @@
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=tides3" defer></script>
-<script src="./app.js?v=tides3" defer></script>
+<script src="./core.js?v=forecast4" defer></script>
+<script src="./app.js?v=forecast4" defer></script>
 </body></html>

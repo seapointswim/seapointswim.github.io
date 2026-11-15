@@ -1,7 +1,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const SOURCE_LABEL={tideTable:'Dublin Port tide table',tide:'Marine Institute tides',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
-const states={good:['LIKELY GOOD','✓'],caution:['MIXED CONDITIONS','!'],avoid:['NOT RECOMMENDED','×'],unknown:['NOT ENOUGH DATA','?']};
+const grades = {good:'Favourable', caution:'Caution', avoid:'Avoid', unknown:'Unknown'};
+function isSmallCraft(warning) {
+  return !!warning && /\bsmall[ -]craft\b/i.test(warning.type + ' ' + warning.headline);
+}
+const coastalWarning = 'Met Éireann issues a Small Craft Warning for small boats when winds of at least 22 knots (about 41 km/h) are forecast in coastal waters. If waves are breaking over the steps, stay out.';
+
 const fmt=(iso)=>new Intl.DateTimeFormat('en-IE',{timeZone:'Europe/Dublin',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));
 const fmtClock=(iso)=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
 function here(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return {date:`${p.year}-${p.month}-${p.day}`,time:`${p.hour}:${p.minute}`}}
@@ -36,22 +41,37 @@ function renderDaily(outlook, daylight = {}, highs = []) {
   const today = here().date;
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
-  set('daily-day', 'Best swim window ' + when);
-  set('daily-grade', outlook.start ? (outlook.status === 'good' ? 'Favourable' : 'Mixed conditions') : '');
+  set('daily-day', 'Best forecast window ' + when);
+  set('daily-grade', outlook.start ? (isSmallCraft(outlook.warning) ? 'Coastal wind warning' : grades[outlook.status]) : '');
   set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);
-  set('daily-reason', outlook.reason);
+  set('daily-reason', isSmallCraft(outlook.warning) ? coastalWarning : outlook.reason);
   set('sunrise', daylight.rise || 'Unavailable');
   set('sunset', daylight.set || 'Unavailable');
   set('daily-highs', highs.map(e => fmtClock(e.t)).join(' and ') || 'Unavailable');
 }
-function showStatus(id,s){const el=$(id);el.className='factor-icon '+s;el.textContent=s==='good'?'✓':s==='caution'?'!':s==='avoid'?'×':'?';}
 function set(id,s){$(id).textContent=s}
+function renderFactors(tide, waves, wind, missing = 'Unavailable') {
+ const highTime = tide?.valid ? window.SeapointCore.dublinParts(tide.high.at) : null;
+ const highDay = highTime && highTime.date !== current.date ? dayLabel(highTime.date) + ' ' : '';
+ set('tide-main', tide?.valid ? (tide.inside ? 'Within high-tide window' : 'Outside high-tide window') : missing);
+ set('tide-value', highTime ? 'High at ' + highDay + highTime.time : '');
+ set('wave-main', waves?.short || missing);
+ set('wave-value', Number.isFinite(waves?.heightM) ? waves.heightM.toFixed(2) + ' m' : '');
+ set('wind-main', wind?.short || missing);
+ const speeds = [];
+ if (Number.isFinite(wind?.speedKn)) speeds.push(Math.round(wind.speedKn * 1.852) + ' km/h');
+ if (Number.isFinite(wind?.gustKn)) speeds.push('gusts ' + Math.round(wind.gustKn * 1.852) + ' km/h');
+ set('wind-value', speeds.join(', '));
+}
 function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
- set('state',states[status][0]);set('chosen','At '+data.time+' · '+dayLabel(data.date));set('headline',data.headline);set('explain',data.explanation);
+ const warningExplainsTime = status === 'caution' && data.warnings.active.some(w => isSmallCraft(w) && w.headline === data.explanation);
+ set('state', status === 'unknown' ? 'FORECAST UNCERTAIN' : grades[status].toUpperCase());
+ set('chosen','At '+data.time+' · '+dayLabel(data.date));
+ set('headline',warningExplainsTime ? 'A coastal wind warning applies' : data.headline);
+ set('explain',warningExplainsTime ? 'Strong winds are forecast in the wider coastal area. The figures below are the local forecast for the time you selected.' : data.explanation);
  const t=data.tide,w=data.waves,wind=data.wind;
- set('tide-main',t?.valid?(t.inside?'In window':'Outside window'):'Unavailable');showStatus('tide-symbol',t?.valid?(t.inside?'good':'avoid'):'unknown');
- set('wave-main',w?.heightM==null?'Unavailable':w.heightM.toFixed(2)+' m');showStatus('wave-symbol',w?.status||'unknown');
- set('wind-main',wind?.speedKn==null?'Unavailable':wind.speedKn.toFixed(0)+' kn');showStatus('wind-symbol',wind?.status||'unknown');
+ if (data.fresh) renderFactors(t, w, wind);
+ else renderFactors(null, null, null, 'Update overdue');
  const tideClock = at => {
    const local = window.SeapointCore.dublinParts(at);
    return local.date === data.date ? local.time : dayLabel(local.date) + ' ' + local.time;
@@ -76,15 +96,19 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  set('sea-detail',temp.waterC==null?'Not available':Number(temp.waterC).toFixed(1)+'°C · '+(temp.waterSource||'Forecast'));
  set('chill-detail',temp.airC==null?'Not available':Number(temp.airC).toFixed(1)+'°C air'+(temp.feelsC!=null?' · '+Number(temp.feelsC).toFixed(1)+'°C '+(temp.feelsLabel||'feels like').toLowerCase():''));
  const bits=[];
- if(data.warnings?.active?.length)bits.push('Met Éireann: '+data.warnings.active[0].headline);
+ if(data.fresh) {
+   for (const warning of data.warnings.active) bits.push('Met Éireann · ' + warning.headline + '.');
+ }
+ $('warning-guide').hidden = !data.fresh || !data.warnings.active.some(isSmallCraft);
  if(data.water?.active?.length)bits.push('EPA bathing alert at Seapoint. Follow the official notice.');
  if(data.warnings&&!data.warnings.verified)bits.push('Marine warnings could not be verified.');
  if(data.water&&!data.water.verified)bits.push('Bathing alerts could not be verified.');
- if(!bits.length)bits.push('This is a forecast. Check the entry steps, ferry wash and local notices before swimming.');
+ if(!bits.length)bits.push('Check for ferry wash and read any bathing notices at the steps.');
  set('notice',bits.join(' '));
  const target=$('hours');target.replaceChildren();
  for(const slot of data.slots||[]){const b=document.createElement('button');b.type='button';b.className='hour '+slot.status+(slot.time===data.time?' selected':'');
-  b.setAttribute('aria-label','Check '+slot.time+': '+slot.status);b.innerHTML='<span class="hour-clock"></span><i class="hour-dot" aria-hidden="true"></i>';
+  b.setAttribute('aria-label','Check '+slot.time+', '+grades[slot.status]);b.innerHTML='<span class="hour-clock"></span><span class="hour-grade"></span>';
+  b.querySelector('.hour-grade').textContent=grades[slot.status];
   b.querySelector('.hour-clock').textContent=slot.time;b.onclick=()=>choose(current.date,slot.time);target.append(b);}
  set('hour-day','Tap an hour to check');
  const active=target.querySelector('.hour.selected');if(active)target.scrollLeft=Math.max(0,active.offsetLeft-target.offsetLeft-target.clientWidth/2+active.clientWidth/2);
@@ -119,6 +143,7 @@ function fromSnapshot(s){
  const output=c.assess(base);
  output.highs=c.highTidesForDay(base.events, current.date);
  output.outlook=outlook;
+ output.fresh=fresh;
  output.slots=outlook.hours;
  output.sources=s.sources||{};
  output.buoy=s.buoyTemp||null;
@@ -153,7 +178,9 @@ async function load(force=false){
   renderDaily({status:'unknown',title:'Forecast unavailable',reason:'A current forecast is needed to pick a swim window.'});
   loaded=null;$('answer').className='answer unknown';set('state','NOT UPDATED');set('chosen',dayLabel(current.date)+' · '+current.time);
   set('headline','Cannot check yet');set('explain','No current published forecast is available. No conditions have been invented.');
-  set('notice','The scheduled GitHub Actions snapshot could not be loaded. '+e.message);
+  set('notice','The latest forecast could not be loaded. Check the official marine warnings and local bathing notices.');
+  $('warning-guide').hidden = true;
+  renderFactors(null, null, null);
   set('window-main','Tide data unavailable');set('window-sub','A successful scheduled refresh is required.');set('high-detail','—');set('rise-detail','—');
   for(const id of ['sea-temp','air-temp','feels-temp'])set(id,'—');
   set('sea-temp-source','Unavailable');set('feels-source','Unavailable');set('temperature-note','No forecast data.');

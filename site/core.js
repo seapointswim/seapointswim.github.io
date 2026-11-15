@@ -102,13 +102,13 @@ function windStatus(kn, gust, deg) {
   if (Number.isFinite(gust) && gust >= 29) return {status:'avoid', short:'Strong gusts'};
   if (kn >= 22 || (onshore && kn >= 19)) return {status:'avoid', short:'Strong winds'};
   if (!Number.isFinite(kn) || !Number.isFinite(gust)) return {status:'unknown', short:'Incomplete wind forecast'};
-  if (kn >= 16 || (onshore && kn >= 13) || gust >= 22) return {status:'caution', short:'Breezy / choppy'};
+  if (kn >= 16 || (onshore && kn >= 13) || gust >= 22) return {status:'caution', short:'Breezy'};
   return {status:'good', short:'Light to moderate'};
 }
 function waveStatus(h){if(!Number.isFinite(h))return {status:'unknown',short:'No forecast'};
   if(h>=1)return {status:'avoid',short:'Rough seas'};
   if(h>=0.6)return {status:'caution',short:'Noticeable waves'};
-  return {status:'good',short:h<0.35?'Relatively calm':'Some chop possible'};
+  return {status:'good',short:h<0.35?'Small waves':'Some chop possible'};
 }
 /** Standard NWS/US-Canada wind-chill index, valid at or below 10 °C and wind >4.8 km/h.
  * This estimates dry, exposed skin, not the much faster cooling of wet skin on exit. */
@@ -200,7 +200,7 @@ function assess({date,time,points=[],events=[],wind=null,waves=null,seaTemp=null
   const alerts=normaliseAlerts(alertsFeed,selected);
   const severeWarning=warningList?.find(w=>/orange|red|gale/i.test(w.level+' '+w.type));
   const warning=warningList?.[0]||null;
-  let status='good',headline='Looks good for a swim',explanation='The tide and sea forecast look favourable.';
+  let status='good',headline='Favourable conditions forecast',explanation='The tide is within the high-water window and the forecast wind and waves are below the planner’s caution levels.';
   const chosenPast=Number.isFinite(selected)&&selected<now-20*MIN;
   if(chosenPast){status='unknown';headline='Choose an upcoming time';explanation='This forecast is intended for future swims.';}
   else if(severeWarning||alerts.active.length){status='avoid';headline='Do not swim';explanation=severeWarning?.headline||'A bathing-water alert applies to Seapoint.';}
@@ -279,7 +279,7 @@ function dailyOutlook(input) {
     const reason = warning?.headline || mixed?.explanation ||
       'Favourable tide, wind and waves. High tide at ' + fmtTime(pick.tide.high.at) + '.';
     return {status:good ? 'good' : 'caution', start:period[0].time,
-      end:period.at(-1).time, pick:pick.time, reason, hours};
+      end:period.at(-1).time, pick:pick.time, reason, warning, hours};
   }
 
   let status = 'avoid', title = 'No suitable swim window', reason;
