@@ -4,7 +4,7 @@ A mobile-first tide/sea-state planner for Seapoint, Dublin. **Static hosting, no
 
 ## How it works
 
-- GitHub Actions fetches the published Dublin Port tide table, the Marine Institute tide prediction, Open-Meteo wind, air, waves and modelled sea temperature, Met Éireann warning feed, EPA bathing alerts, and M2 offshore buoy.
+- GitHub Actions fetches the Marine Institute’s Seapoint Beach tide model, Open-Meteo wind, air, waves and modelled sea temperature, Met Éireann warning feed, EPA bathing alerts, and M2 offshore buoy.
 - It produces one static `site/data/conditions.json` for roughly the next eight days and redeploys `site/` directly to GitHub Pages.
 - The page calculates the swimming verdict for the exact Dublin-local date/time in your browser using only that JSON. **No provider APIs are called from the browser**, and CORS is not required.
 - The visible status and source list disclose unavailable providers. A snapshot older than **90 minutes** becomes **Not enough data**, regardless of previous conditions. An old routine water-quality sample *does not automatically* mean Caution; active bathing alerts are checked separately.
@@ -54,13 +54,13 @@ Open `http://localhost:4173/`. Running `node scripts/update-data.js` requires ou
 - Wave heights are offshore **model forecasts**, not direct wave measurements at Seapoint steps. M2 is an offshore observation, not a Seapoint sensor. The wind-chill formula describes dry exposed skin, not chilling of wet skin after a swim.
 - The listed Met Éireann warning feed may not cover every type of marine safety advisory; the site links to the official marine forecast to check additional notices.
 - The updater gives each request a timeout and lists provider failure reasons in its workflow summary. A failed provider is **not** assumed to be safe. If a core tide, wind or wave source fails, verdicts cannot be favourable.
-- High and low water use the published Dublin Port table where it covers the forecast. Elsewhere, the planner detects changes of direction in the Marine Institute’s predicted levels. Both use Dublin Port as the reference for Seapoint. If both sources are unavailable, the bundled table covers 13–30 November 2026.
+- Tide events come from the Marine Institute EPA Beaches model for Seapoint in south Dublin (IEEABWC090_0000_0100_MODELLED). Heights are relative to model mean sea level. The approximate three-hour rule is centred on the median predicted high for 2026 (1.36 m). A dated copy of the same model’s 2026 turning points covers outages. Outside that copy’s coverage, the site reports missing data. Sunrise and sunset use local forecast times with a date-based astronomical estimate at the beach if either time is missing.
 - GitHub Pages does not guarantee exact refresh timing or real-time measurements. Always inspect local conditions, access steps, currents, ferry wash, water quality and current weather warnings before entering the sea. Cold-water shock can happen below 15°C regardless of swimming experience.
 - The workflow and browser interface were tested with mocked provider responses and static local rendering. **The actual external APIs cannot be verified end-to-end in this environment.** After first deployment, review workflow logs and source diagnostics, and only rely on the recommendation when the essential data show as connected.
 
 ## Source docs
 
-- [Marine Institute tide predictions](https://erddap.marine.ie/erddap/info/imiTidePrediction/index.html)
+- [Marine Institute tide predictions](https://erddap.marine.ie/erddap/info/imiTidePredictionEpa/index.html)
 - [Open-Meteo weather and marine APIs](https://open-meteo.com/en/docs/marine-weather-api)
 - [Met Éireann marine forecast](https://www.met.ie/forecasts/marine-inland-lakes)
 - [EPA bathing-water alerts](https://www.beaches.ie/)
