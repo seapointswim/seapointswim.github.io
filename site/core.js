@@ -213,6 +213,16 @@ function longestSwimWindow(samples, allowMixed) {
   return best;
 }
 
+function defaultSwimDate(wind, now) {
+  const local = dublinParts(now);
+  const index = wind?.daily?.time?.indexOf(local.date) ?? -1;
+  const sunset = wind?.daily?.sunset?.[index];
+  if (!sunset) return local.date;
+  const endOfWindow = localToUtc(local.date, sunset.slice(11, 16)) - 25 * MIN;
+  if (now < endOfWindow) return local.date;
+  return new Date(Date.parse(local.date + 'T12:00:00Z') + DAY).toISOString().slice(0, 10);
+}
+
 function dailyOutlook(input) {
   const samples = [];
   const midnight = localToUtc(input.date, '00:00');
@@ -273,6 +283,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours};
 }
 
-const SeapointCore={dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,fallbackEvents,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,fallbackEvents,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

@@ -9,8 +9,10 @@ const nextDate=(date,days)=>new Date(Date.parse(date+'T12:00:00Z')+days*86400000
 const dayLabel=date=>new Intl.DateTimeFormat('en-IE',{weekday:'short',day:'numeric',month:'short',timeZone:'Europe/Dublin'}).format(new Date(date+'T12:00:00Z'));
 let current={date:'',time:''},seq=0,ctl=null,loaded=null,snapshot=null;
 let followBestTime = true;
+let chooseDayFromForecast = false;
 let lastRequestAt = 0;
-function choose(date, time) {
+function choose(date, time, defaultDay = false) {
+  chooseDayFromForecast = defaultDay;
   const local = here();
   followBestTime = !time;
   current = {date, time: time || (date === local.date ? local.time : '14:00')};
@@ -133,6 +135,10 @@ async function load(force=false){
   if(value.schemaVersion!==1)throw Error('Unsupported snapshot version');
   if(n!==seq)return;
   snapshot=value;
+  if (chooseDayFromForecast) {
+    choose(window.SeapointCore.defaultSwimDate(value.wind, Date.now()));
+    return;
+  }
   render(fromSnapshot(value));
  }catch(e){if(n!==seq||e.name==='AbortError')return;
   snapshot=null;
@@ -153,8 +159,8 @@ $('date').onchange=()=>choose($('date').value||here().date);
 $('time').onchange=()=>choose(current.date||here().date,$('time').value||'14:00');
 $('refresh').onclick=()=>load(true);
 const p=new URLSearchParams(location.search),local=here(),validDate=/^20\d{2}-\d{2}-\d{2}$/.test(p.get('date')||''),validTime=/^([01]\d|2[0-3]):[0-5]\d$/.test(p.get('time')||'');
-const date=validDate?p.get('date'):(Number(local.time.slice(0,2))>=18?nextDate(local.date,1):local.date);
-choose(date,validTime ? p.get('time') : undefined);
+const date = validDate ? p.get('date') : local.date;
+choose(date, validTime ? p.get('time') : undefined, !validDate && !validTime);
 
 // Keep the remaining window and snapshot age accurate when a tab stays open.
 function updateVisibleForecast() {
