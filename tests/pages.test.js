@@ -48,7 +48,7 @@ function assess(s,date='2026-11-15',time='14:00'){
 }
 test('Github Pages paths are relative and browser core is loaded',()=>{
  const html=fs.readFileSync('site/index.html','utf8');
- assert.match(html,/src="\.\/core\.js"/);assert.match(html,/src="\.\/app\.js"/);
+ assert.match(html,/src="\.\/core\.js(?:\?[^"]*)?"/);assert.match(html,/src="\.\/app\.js(?:\?[^"]*)?"/);
  assert.doesNotMatch(html,/src="\/app\.js"/);
 });
 test('mocked upstreams yield a complete snapshot for selected day',async()=>{
@@ -182,4 +182,15 @@ test('the default day follows Dublin daylight in winter and summer', () => {
    const wind = {daily:{time:[date],sunset:[date+'T'+sunset]}};
    assert.equal(core.defaultSwimDate(wind,core.localToUtc(date,check)),expected);
  }
+});
+
+test('sunrise and sunset follow the selected Dublin date independently of the swim window', () => {
+ const summer = '2026-06-15', winter = '2026-11-16';
+ const weather = {daily:{time:[summer,winter], sunrise:[summer+'T04:57',winter+'T07:49'],
+   sunset:[summer+'T21:57',winter+'T16:24']}};
+ assert.deepEqual(core.isDay(weather,summer,'05:00'),{rise:'04:57',set:'21:57',ok:false});
+ assert.deepEqual(core.isDay(weather,winter,'08:15'),{rise:'07:49',set:'16:24',ok:true});
+ weather.daily.sunrise[1] = null;
+ assert.deepEqual(core.isDay(weather,winter,'08:15'),{rise:null,set:'16:24',ok:null});
+ assert.deepEqual(core.isDay(weather,'2026-12-01','08:15'),{rise:null,set:null,ok:null});
 });
