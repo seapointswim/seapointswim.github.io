@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint12">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint13">
 </head>
 <body>
 <div class="app">
@@ -54,7 +54,12 @@
  <section class="timeline" aria-label="Alternative swimming times"><div class="section-heading"><h3>Other times that day</h3><span id="hour-day">Tap an hour to check</span></div><div class="hours" id="hours"><div class="hours-placeholder">Checking the hourly outlook…</div></div></section>
  <section class="timeline" aria-label="Hourly weather at Seapoint"><div class="section-heading"><h3>Hourly weather at Seapoint</h3></div>
  <p id="weather-summary">Checking the hourly forecast…</p>
- <div class="weather-scroll" tabindex="0" aria-label="Scroll to see each hour"><table id="weather-table"></table></div></section>
+ <div id="wx-view" hidden>
+   <div class="wx-toolbar"><label for="wx-hour">Hour ending</label><button type="button" id="wx-back" aria-label="Previous weather hour">‹</button><select id="wx-hour" aria-label="Hour ending in Dublin"></select><button type="button" id="wx-next" aria-label="Next weather hour">›</button><span id="wx-air"></span></div>
+   <p class="wx-key"><i></i> Wind <i class="dashed"></i> Gusts <span>Arrows point where the wind blows.</span></p>
+   <div id="weather-plots"></div>
+   <p class="wx-help">Tap a chart or choose an hour for exact readings. Rain and sunshine are totals for the hour ending. A dash means the forecast is unavailable.</p>
+ </div></section>
  <section id="note" class="note"><span class="note-symbol">i</span><div><p id="notice">Check the local notices before swimming.</p><a id="warning-guide" href="https://www.met.ie/weather-warnings" hidden>How Met Éireann defines a Small Craft Warning</a></div></section>
  <details id="more" class="details"><summary>See readings and sources <span>+</span></summary><div class="detail-content">
  <div class="readings"><div class="reading"><small>PREDICTED HIGH TIDE</small><strong id="high-detail">—</strong></div><div class="reading"><small>HEIGHT ABOVE ADJACENT LOW</small><strong id="rise-detail">—</strong></div><div class="reading"><small>WAVES · MODELLED</small><strong id="wave-detail">—</strong></div><div class="reading"><small>WIND · FORECAST</small><strong id="wind-detail">—</strong></div><div class="reading"><small>SEA TEMPERATURE · FORECAST OR OFFSHORE</small><strong id="sea-detail">—</strong></div><div class="reading"><small>AIR / WIND CHILL · FORECAST / CALCULATED</small><strong id="chill-detail">—</strong></div></div>
@@ -71,5 +76,6 @@
 <script src="./core.js?v=seapoint12" defer></script>
 <script src="./forecast.js?v=seapoint10" defer></script>
 <script src="./tide-chart.js?v=1" defer></script>
-<script src="./app.js?v=seapoint12" defer></script>
+<script src="./hourly-weather.js?v=1" defer></script>
+<script src="./app.js?v=seapoint13" defer></script>
 </body></html>
