@@ -1,0 +1,38 @@
+name: Recover a missed forecast refresh
+
+on:
+  workflow_run:
+    workflows: ["Refresh sea conditions and publish Seapoint Swim"]
+    types: [completed]
+    branches: [main]
+
+# Only the newest completed refresh needs to watch the next quarter hour.
+concurrency:
+  group: watch-next-forecast
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check-next-refresh:
+    if: github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    permissions:
+      actions: write
+    steps:
+      - name: Leave the next refresh to the schedule if it starts on time
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LAST_RUN: ${{ github.event.workflow_run.id }}
+          STARTED_AT: ${{ github.event.workflow_run.run_started_at }}
+        run: |
+          set -euo pipefail
+          # Anchor the interval to the previous start, including overnight.
+          due=$(( $(date -u -d "$STARTED_AT" +%s) + 900 ))
+          remaining=$(( due - $(date -u +%s) ))
+          if (( remaining > 0 )); then sleep "$remaining"; fi
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?branch=main&per_page=1" --jq '.workflow_runs[0].id')
+          if [[ "$latest" == "$LAST_RUN" ]]; then
+            gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+          fi

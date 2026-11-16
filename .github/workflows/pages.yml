@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   schedule:
     # Every 15 min, offset away from the busy top of the hour (UTC).
-    - cron: '7,22,37,52 * * * *'
+    - cron: '8,23,38,53 * * * *'
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: seapoint-swim-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   refresh-and-publish:
@@ -48,6 +48,7 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
+          retention-days: 1
 
       - name: Deploy to GitHub Pages
         id: deploy
