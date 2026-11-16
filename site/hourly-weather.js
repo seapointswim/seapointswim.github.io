@@ -6,7 +6,7 @@
   const finite=Number.isFinite;
   const clock=minutes=>minutes===1440?'24:00':String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
   const minutes=s=>Number(s.slice(0,2))*60+Number(s.slice(3,5));
-  const format=(v,digits,unit)=>finite(v)?Number(v.toFixed(digits))+' '+unit:'Unavailable';
+  const format=(v,digits,unit)=>finite(v)?Number(v.toFixed(digits))+' '+unit:'—';
   const series=[
     {id:'wind',title:'Wind & gusts',unit:'m/s',keys:['wind','gust'],step:5},
     {id:'waves',title:'Wave height',unit:'m',keys:['waves'],step:0.5},
@@ -96,36 +96,56 @@
     $('wx-hour').value=String(selected);
     $('wx-selected-heading').textContent='Readings at '+clock(row.end)+' · '+dayLabel(current.date);
     $('wx-back').disabled=selected===0;$('wx-next').disabled=selected===rows.length-1;
-    for(const [key,digits,unit] of measures){
-      $('wx-'+key).textContent=finite(row[key])?format(row[key],digits,unit):'—';
+    for(const {key,digits,unit} of measures){
+      $('wx-'+key).textContent=key==='dir'?direction(row):format(row[key],digits,unit);
     }
-    $('wx-dir').textContent=direction(row);
     for(const cursor of $('weather-plots').querySelectorAll('.wx-cursor'))
       cursor.setAttribute('x',x(selected)-(right-left)/rows.length/2);
   }
-  const measures=[['wind',1,'m/s'],['gust',1,'m/s'],['waves',2,'m'],['rain',2,'mm'],['sun',0,'min'],['air',0,'°C']];
+  const measures=[
+    {key:'wind',label:'Wind',digits:1,unit:'m/s'},
+    {key:'dir',label:'Wind from'},
+    {key:'gust',label:'Gusts',digits:1,unit:'m/s'},
+    {key:'waves',label:'Waves',digits:2,unit:'m'},
+    {key:'rain',label:'Rain',digits:2,unit:'mm'},
+    {key:'sun',label:'Sunshine',digits:0,unit:'min'},
+    {key:'air',label:'Air',digits:0,unit:'°C'}
+  ];
   const direction=r=>finite(r.dir)?compass[Math.round(r.dir/22.5)%16]:r.calm?'Calm':'—';
+  function tableHeading(scope,text){
+    const heading=document.createElement('th');
+    heading.scope=scope;
+    heading.textContent=text;
+    return heading;
+  }
   function renderTable(){
-    const body=$('wx-rows');body.replaceChildren();
     $('wx-caption').textContent='Hourly readings · '+dayLabel(current.date);
-    rows.forEach((row,index)=>{
-      const tr=body.insertRow(),th=document.createElement('th');
-      th.scope='row';th.textContent=clock(row.end);tr.append(th);
-      for(const [key,digits] of measures){
+    const times=rows.map((row,index)=>{
+      const heading=tableHeading('col',clock(row.end));
+      if(index===selected)heading.className='wx-current';
+      return heading;
+    });
+    $('wx-times').replaceChildren(tableHeading('col','Hour ending'),...times);
+    const body=$('wx-rows');
+    body.replaceChildren();
+    for(const {key,label,digits,unit} of measures){
+      const tr=body.insertRow();
+      tr.append(tableHeading('row',unit?label+' ('+unit+')':label));
+      rows.forEach((row,index)=>{
         const cell=tr.insertCell();
-        cell.textContent=finite(row[key])?String(Number(row[key].toFixed(digits))):'—';
-        if(key==='wind'){
-          const bearing=tr.insertCell();
+        if(index===selected)cell.className='wx-current';
+        if(key==='dir'){
           if(finite(row.dir)){
             const arrow=document.createElement('span');
             arrow.className='wx-table-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='↑';
-            arrow.style.transform='rotate('+((row.dir+180)%360)+'deg)';bearing.append(arrow);
+            arrow.style.transform='rotate('+((row.dir+180)%360)+'deg)';cell.append(arrow);
           }
-          bearing.append(direction(row));
+          cell.append(direction(row));
+        }else{
+          cell.textContent=finite(row[key])?String(Number(row[key].toFixed(digits))):'—';
         }
-      }
-      if(index===selected)tr.className='wx-current';
-    });
+      });
+    }
   }
   function showView(table){
     $('wx-plots-view').hidden=table;

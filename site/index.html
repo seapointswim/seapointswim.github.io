@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint14">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint15">
 </head>
 <body>
 <div class="app">
@@ -71,8 +71,13 @@
      <p class="wx-help">Tap a plot or choose an hour to update the readings above.</p>
    </div>
    <div id="wx-table-view" hidden>
-     <div class="wx-scroll" tabindex="0" role="region" aria-label="Hourly readings, scroll to compare all columns">
-       <table class="wx-table"><caption id="wx-caption">Hourly readings</caption><thead><tr><th scope="col">Hour ending</th><th scope="col">Wind<br>(m/s)</th><th scope="col">Wind from</th><th scope="col">Gusts<br>(m/s)</th><th scope="col">Waves<br>(m)</th><th scope="col">Rain<br>(mm)</th><th scope="col">Sun<br>(min)</th><th scope="col">Air<br>(°C)</th></tr></thead><tbody id="wx-rows"></tbody></table>
+     <p id="wx-caption">Hourly readings</p>
+     <p id="wx-scroll-help" class="wx-help">Scroll sideways to compare hours.</p>
+     <div class="wx-scroll" tabindex="0" role="region" aria-labelledby="wx-caption" aria-describedby="wx-scroll-help">
+       <table class="wx-table" aria-labelledby="wx-caption">
+         <thead><tr id="wx-times"><th scope="col">Hour ending</th></tr></thead>
+         <tbody id="wx-rows"></tbody>
+       </table>
      </div>
    </div>
    <p class="wx-help">Rain and sunshine are totals for the hour ending. A dash means the forecast is unavailable.</p>
@@ -93,6 +98,6 @@
 <script src="./core.js?v=seapoint14" defer></script>
 <script src="./forecast.js?v=seapoint10" defer></script>
 <script src="./tide-chart.js?v=1" defer></script>
-<script src="./hourly-weather.js?v=2" defer></script>
+<script src="./hourly-weather.js?v=3" defer></script>
 <script src="./app.js?v=seapoint14" defer></script>
 </body></html>
