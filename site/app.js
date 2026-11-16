@@ -62,9 +62,19 @@ async function latestForecast() {
 function choose(date, time, defaultDay = false) {
   chooseDayFromForecast = defaultDay;
   const local = here();
+  const changedDate = current.date && current.date !== date;
   followBestTime = !time;
   current = {date, time: time || (date === local.date ? local.time : '14:00')};
-  renderSunTimes(window.SeapointCore.sunTimesForDay(snapshot?.wind?.daily, date));
+  const daylight=window.SeapointCore.sunTimesForDay(snapshot?.wind?.daily,date);
+  if (changedDate) {
+    renderDaily({status:'unknown',title:'Checking this date…',reason:'Looking up the high tides and forecast for this date.'},daylight);
+    set('daily-highs','Checking…');
+    renderFactors(null,null,null,'Checking…');
+    set('window-main','Checking high tide…');
+    set('window-sub','');
+    loaded=null;
+    loading();
+  } else renderSunTimes(daylight);
   $('date').value = date;
   $('time').value = current.time;
   for (const [id, selected] of Object.entries({
