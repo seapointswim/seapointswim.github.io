@@ -72,7 +72,7 @@ test('a missing wave API does not fabricate a good verdict',async()=>{
 test('dated Seapoint model fallback has the same station and datum and no interpolated level',async()=>{
  const d=await buildSnapshot({fetchImpl:makeFetch({tide:false}),now});
  assert.equal(d.sources.tide.status,'published-copy');
- const a=assess(d);assert.equal(a.tide.datum,'above model mean sea level');
+ const a=assess(d);assert.equal(a.tide.datum,'estimated Dublin tide-table scale');
  assert.equal(a.tide.selectedLevel,null);
  assert.equal(a.tide.aboveLow,null);
 });
@@ -218,11 +218,11 @@ test('Seapoint beach turning points drive the display, the assessment and the da
  assert.equal(morning.tide.inside,false);
  assert.equal(afternoon.tide.inside,true);
  assert.equal(core.fmtTime(afternoon.tide.high.at),'15:55');
- assert.equal(afternoon.tide.high.height,0.95);
- assert.equal(afternoon.tide.window.hours,3 + 0.95 - 1.36);
+ assert.equal(afternoon.tide.high.height,3.45);
+ assert.ok(afternoon.tide.window.start < afternoon.tide.high.at && afternoon.tide.window.end > afternoon.tide.high.at);
  const plan = core.dailyOutlook({date:'2026-11-16',now,points:s.tidePoints,events:s.events,
    wind:s.wind,waves:s.waves,warningFeed:s.warningFeed,alertsFeed:s.alertsFeed});
- assert.ok(plan.start >= '13:00' && plan.end >= '15:00');
+ assert.ok(plan.start >= '12:15' && plan.start <= '15:00' && plan.end >= '15:00');
  const noCover = await buildSnapshot({fetchImpl:makeFetch({tide:false}),now:Date.parse('2032-06-15T12:00:00Z')});
  assert.deepEqual(noCover.events,[]);
  assert.equal(noCover.sources.tide.status,'unavailable');
@@ -280,4 +280,17 @@ test('direct refresh checks beach restrictions and rejects missing or wrong beac
  await assert.rejects(read,/Incomplete/);
  assert.equal(forecast.isFresh({generatedAt:new Date(now-91*60000).toISOString()},now),false);
  assert.equal(forecast.isFresh({generatedAt:new Date(now).toISOString()},now),true);
+});
+
+test('2.5 m crossings include equality and use each side of high tide separately', () => {
+ const minute=60000;
+ const points=[-1,0,.2,1,.5,.25,0,-1].map((h,i)=>({t:i*10*minute,h}));
+ const events=[{...points[0],type:'low'},{...points[3],type:'high'},{...points[7],type:'low'}];
+ const read=t=>core.tideInfo(points,events,t);
+ assert.deepEqual(read(30*minute).window,{start:10*minute,end:60*minute});
+ assert.equal(read(10*minute-1).inside,false);
+ assert.equal(read(10*minute).inside,true);
+ assert.equal(read(20*minute).selectedLevel,2.7);
+ assert.equal(read(60*minute).inside,true);
+ assert.equal(read(60*minute+1).inside,false);
 });
