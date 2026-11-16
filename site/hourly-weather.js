@@ -48,8 +48,7 @@
       panel.className='wx-panel wx-'+s.id;
       const header=document.createElement('div');header.className='wx-heading';
       const title=document.createElement('strong');title.textContent=s.title+' ('+s.unit+')';
-      const value=document.createElement('span');value.id='wx-value-'+s.id;
-      header.append(title,value);panel.append(header);
+      header.append(title);panel.append(header);
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       const wind=s.id==='wind',bottom=s.id==='sun',height=wind?89:bottom?78:54;
       svg.setAttribute('viewBox','0 0 500 '+height);
@@ -93,17 +92,50 @@
   }
   function select(index){
     selected=Math.max(0,Math.min(rows.length-1,index));
-    const row=rows[selected],arrow=finite(row.dir)?' · from '+compass[Math.round(row.dir/22.5)%16]:'';
+    const row=rows[selected];
     $('wx-hour').value=String(selected);
+    $('wx-selected-heading').textContent='Readings at '+clock(row.end)+' · '+dayLabel(current.date);
     $('wx-back').disabled=selected===0;$('wx-next').disabled=selected===rows.length-1;
-    $('wx-air').textContent='Air '+format(row.air,0,'°C');
-    $('wx-value-wind').textContent=format(row.wind,1,'m/s')+arrow+' · gusts '+format(row.gust,1,'m/s');
-    $('wx-value-waves').textContent=format(row.waves,2,'m');
-    $('wx-value-rain').textContent=row.rain===0?'Dry · 0 mm':format(row.rain,2,'mm');
-    $('wx-value-sun').textContent=format(row.sun,0,'min');
+    for(const [key,digits,unit] of measures){
+      $('wx-'+key).textContent=finite(row[key])?format(row[key],digits,unit):'—';
+    }
+    $('wx-dir').textContent=direction(row);
     for(const cursor of $('weather-plots').querySelectorAll('.wx-cursor'))
       cursor.setAttribute('x',x(selected)-(right-left)/rows.length/2);
   }
+  const measures=[['wind',1,'m/s'],['gust',1,'m/s'],['waves',2,'m'],['rain',2,'mm'],['sun',0,'min'],['air',0,'°C']];
+  const direction=r=>finite(r.dir)?compass[Math.round(r.dir/22.5)%16]:r.calm?'Calm':'—';
+  function renderTable(){
+    const body=$('wx-rows');body.replaceChildren();
+    $('wx-caption').textContent='Hourly readings · '+dayLabel(current.date);
+    rows.forEach((row,index)=>{
+      const tr=body.insertRow(),th=document.createElement('th');
+      th.scope='row';th.textContent=clock(row.end);tr.append(th);
+      for(const [key,digits] of measures){
+        const cell=tr.insertCell();
+        cell.textContent=finite(row[key])?String(Number(row[key].toFixed(digits))):'—';
+        if(key==='wind'){
+          const bearing=tr.insertCell();
+          if(finite(row.dir)){
+            const arrow=document.createElement('span');
+            arrow.className='wx-table-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='↑';
+            arrow.style.transform='rotate('+((row.dir+180)%360)+'deg)';bearing.append(arrow);
+          }
+          bearing.append(direction(row));
+        }
+      }
+      if(index===selected)tr.className='wx-current';
+    });
+  }
+  function showView(table){
+    $('wx-plots-view').hidden=table;
+    $('wx-table-view').hidden=!table;
+    $('show-plots').setAttribute('aria-pressed',String(!table));
+    $('show-table').setAttribute('aria-pressed',String(table));
+    if(table)renderTable();
+  }
+  $('show-plots').onclick=()=>showView(false);
+  $('show-table').onclick=()=>showView(true);
   $('wx-hour').onchange=e=>select(Number(e.target.value));
   $('wx-back').onclick=()=>select(selected-1);
   $('wx-next').onclick=()=>select(selected+1);
@@ -123,10 +155,17 @@
     }
     $('wx-hour').replaceChildren(...rows.map((r,i)=>new Option(clock(r.end),String(i))));
     const now=here(), earliest=now.date===current.date?minutes(now.time):0;
-    const best=rows.filter(r=>outlook.start&&r.dry&&r.sun>=30&&
-      Math.min(r.end,minutes(outlook.end))-Math.max(r.end-60,minutes(outlook.start),earliest)>=15)
-      .sort((a,b)=>b.sun-a.sun)[0];
-    $('weather-summary').textContent=best?'Sunny and dry within the swim window · '+clock(Math.max(best.end-60,minutes(outlook.start),earliest))+'–'+clock(Math.min(best.end,minutes(outlook.end))):'';
+    const sunny=[];
+    for(const p of (outlook.periods||[]).filter(p=>p.status===outlook.status)){
+      for(const row of rows){
+        if(!row.dry || row.sun==null || row.sun<30)continue;
+        const from=Math.max(row.end-60,minutes(p.start),earliest),to=Math.min(row.end,minutes(p.end));
+        if(to-from>=15)sunny.push({from,to,sun:row.sun});
+      }
+    }
+    const best=sunny.sort((a,b)=>b.sun-a.sun)[0];
+    $('weather-summary').textContent=best?'Sunny and dry · '+clock(best.from)+'–'+clock(best.to):'';
     renderPlots();select(selected);
+    if(!$('wx-table-view').hidden)renderTable();
   };
 })();

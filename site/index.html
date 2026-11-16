@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint13">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint14">
 </head>
 <body>
 <div class="app">
  <header class="topbar"><div class="brand-icon" aria-hidden="true">≋</div><div class="brand"><strong>seapoint<span>swim</span></strong><span>SEA SWIMMING · DUBLIN</span></div><button class="refresh" id="refresh" title="Check conditions again" type="button">↻ <span>Refresh</span></button></header>
  <main>
  <div class="intro"><h1>Worth a dip?</h1></div>
- <section id="daily" class="daily unknown" aria-label="Best forecast window" aria-live="polite" aria-atomic="true">
-   <div class="daily-meta"><span id="daily-day">Best forecast window</span><span id="daily-grade"></span></div>
+ <section id="daily" class="daily unknown" aria-label="Swim recommendation" aria-live="polite" aria-atomic="true">
+   <div class="daily-meta"><span id="daily-day">Recommended swim times</span><span id="daily-grade"></span></div>
    <h2 id="daily-period">Checking the forecast…</h2>
-   <p id="daily-reason">Looking for the best daylight swim window at Seapoint.</p>
+   <p id="daily-reason">Checking daylight swim times at Seapoint.</p>
+   <div id="daily-caution" hidden></div>
    <details id="window-why" hidden><summary>Why these times?</summary>
-     <p id="why-start"></p><p id="why-end"></p><p>We check every 15 minutes using the nearest hourly weather and wave forecasts. We choose the longest favourable stretch. If none qualifies, we look for a stretch that includes caution periods.</p>
+     <p>Each range groups consecutive favourable checks, 15 minutes apart. A time shown on its own is a single forecast check. Times marked caution have less favourable conditions.</p><div id="period-reasons"></div>
    </details>
    <dl id="daylight" class="sun-times" aria-label="Daylight and high tides at Seapoint Beach">
      <div><dt>Sunrise</dt><dd id="sunrise">…</dd></div>
@@ -24,16 +25,17 @@
    </dl>
 
  </section>
- <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><form class="tide-setting" id="tide-form">
+ <section class="chooser" aria-labelledby="settings-heading"><h2 class="block-title" id="settings-heading">Plan your swim</h2><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><form class="tide-setting" id="tide-form">
  <div><label for="minimum-tide">Lowest tide I want to swim at (metres)</label><p id="tide-help">On the rising tide, your window opens when the water reaches this height. It closes when the tide falls below it. Raise the number for a shorter window around high tide.</p></div>
  <div class="tide-controls"><input type="number" step="0.1" min="0" required id="minimum-tide" value="2.5" aria-describedby="tide-help"><button type="submit">Apply</button><button type="button" id="reset-tide">Reset to 2.5 m</button></div><span role="status" id="tide-feedback"></span>
  </form>
- <section class="tide-brief" aria-label="High tide and swimming window"><div class="tide-text"><small>WHEN THE TIDE MEETS YOUR MINIMUM <span class="approx">· APPROXIMATE</span></small><strong id="window-main">Checking high tide…</strong><span id="window-sub">Checking when the tide reaches your minimum.</span></div>
+ <details class="tide-brief"><summary>When the tide meets your minimum</summary><div class="tide-text"><strong id="window-main">Checking high tide…</strong><span id="window-sub">Checking when the tide reaches your minimum.</span></div>
  <figure id="tide-figure" hidden><figcaption id="tide-caption"></figcaption>
  <svg role="img" aria-labelledby="tide-caption tide-legend" id="tide-chart" viewBox="0 0 440 175"></svg>
- <div id="tide-legend">Solid curve: predicted tide · Dashed line: your minimum</div></figure></section>
+ <div id="tide-legend">Solid curve: predicted tide · Dashed line: your minimum</div></figure></details>
  <div class="dublin-time">All times are local to Dublin</div></section>
- <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h2 id="headline">Checking conditions…</h2><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
+ <h2 class="block-title time-title">Forecast for your selected time</h2>
+ <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h3 id="headline">Checking conditions…</h3><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
    <div><dt>Tide</dt><dd id="tide-main">Checking…</dd><dd class="reading-value" id="tide-value"></dd></div>
    <div><dt>Waves</dt><dd id="wave-main">Checking…</dd><dd class="reading-value" id="wave-value"></dd></div>
    <div><dt>Wind</dt><dd id="wind-main">Checking…</dd><dd class="reading-value" id="wind-value"></dd></div>
@@ -55,10 +57,25 @@
  <section class="timeline" aria-label="Hourly weather at Seapoint"><div class="section-heading"><h3>Hourly weather at Seapoint</h3></div>
  <p id="weather-summary">Checking the hourly forecast…</p>
  <div id="wx-view" hidden>
-   <div class="wx-toolbar"><label for="wx-hour">Hour ending</label><button type="button" id="wx-back" aria-label="Previous weather hour">‹</button><select id="wx-hour" aria-label="Hour ending in Dublin"></select><button type="button" id="wx-next" aria-label="Next weather hour">›</button><span id="wx-air"></span></div>
-   <p class="wx-key"><i></i> Wind <i class="dashed"></i> Gusts <span>Arrows point where the wind blows.</span></p>
-   <div id="weather-plots"></div>
-   <p class="wx-help">Tap a chart or choose an hour for exact readings. Rain and sunshine are totals for the hour ending. A dash means the forecast is unavailable.</p>
+   <div class="wx-switch" role="group" aria-label="Hourly forecast view">
+     <button id="show-plots" type="button" aria-pressed="true" aria-controls="wx-plots-view">Plots</button>
+     <button id="show-table" type="button" aria-pressed="false" aria-controls="wx-table-view">Table</button>
+   </div>
+   <div id="wx-plots-view">
+     <div class="wx-toolbar"><label for="wx-hour">Hour ending</label><button type="button" id="wx-back" aria-label="Previous weather hour">‹</button><select id="wx-hour" aria-label="Hour ending in Dublin"></select><button type="button" id="wx-next" aria-label="Next weather hour">›</button></div>
+     <div class="wx-readout"><p id="wx-selected-heading">Readings for the selected hour</p><dl class="wx-readings" aria-label="Readings for the selected hour">
+       <div><dt>Wind</dt><dd id="wx-wind"></dd></div><div><dt>Wind from</dt><dd id="wx-dir"></dd></div><div><dt>Gusts</dt><dd id="wx-gust"></dd></div><div><dt>Waves</dt><dd id="wx-waves"></dd></div><div><dt>Rain</dt><dd id="wx-rain"></dd></div><div><dt>Sunshine</dt><dd id="wx-sun"></dd></div><div><dt>Air</dt><dd id="wx-air"></dd></div>
+     </dl></div>
+     <p class="wx-key"><i></i> Wind <i class="dashed"></i> Gusts <span>Arrows point where the wind blows.</span></p>
+     <div id="weather-plots"></div>
+     <p class="wx-help">Tap a plot or choose an hour to update the readings above.</p>
+   </div>
+   <div id="wx-table-view" hidden>
+     <div class="wx-scroll" tabindex="0" role="region" aria-label="Hourly readings, scroll to compare all columns">
+       <table class="wx-table"><caption id="wx-caption">Hourly readings</caption><thead><tr><th scope="col">Hour ending</th><th scope="col">Wind<br>(m/s)</th><th scope="col">Wind from</th><th scope="col">Gusts<br>(m/s)</th><th scope="col">Waves<br>(m)</th><th scope="col">Rain<br>(mm)</th><th scope="col">Sun<br>(min)</th><th scope="col">Air<br>(°C)</th></tr></thead><tbody id="wx-rows"></tbody></table>
+     </div>
+   </div>
+   <p class="wx-help">Rain and sunshine are totals for the hour ending. A dash means the forecast is unavailable.</p>
  </div></section>
  <section id="note" class="note"><span class="note-symbol">i</span><div><p id="notice">Check the local notices before swimming.</p><a id="warning-guide" href="https://www.met.ie/weather-warnings" hidden>How Met Éireann defines a Small Craft Warning</a></div></section>
  <details id="more" class="details"><summary>See readings and sources <span>+</span></summary><div class="detail-content">
@@ -73,9 +90,9 @@
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=seapoint12" defer></script>
+<script src="./core.js?v=seapoint14" defer></script>
 <script src="./forecast.js?v=seapoint10" defer></script>
 <script src="./tide-chart.js?v=1" defer></script>
-<script src="./hourly-weather.js?v=1" defer></script>
-<script src="./app.js?v=seapoint13" defer></script>
+<script src="./hourly-weather.js?v=2" defer></script>
+<script src="./app.js?v=seapoint14" defer></script>
 </body></html>

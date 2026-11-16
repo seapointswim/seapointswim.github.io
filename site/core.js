@@ -308,18 +308,20 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
     daylight:light,warnings:{verified:warningList!==null,active:warningList||[]},water:alerts,caveats};
 }
 function slots(input,date){return Array.from({length:20},(_,i)=>{const time=`${String(Math.floor((9*60+i*30)/60)).padStart(2,'0')}:${String((i*30)%60).padStart(2,'0')}`;const r=assess({...input,date,time});return {time,status:r.status}});}
-function longestSwimWindow(samples, allowMixed) {
-  let first = 0;
-  let best = null;
-  for (let i = 0; i <= samples.length; i++) {
-    const sample = samples[i];
-    if (sample && (sample.status === 'good' || (allowMixed && sample.status === 'caution'))) continue;
-    const count = i - first;
-    // Two adjacent forecast checks establish both ends of a period.
-    if (count >= 2 && (!best || count > best.length)) best = samples.slice(first, i);
-    first = i + 1;
+function swimPeriods(samples, now) {
+  const periods=[];
+  for (let i=0;i<samples.length;i++) {
+    const first=samples[i];
+    if (first.status!=='good' && first.status!=='caution') continue;
+    const startIndex=i;
+    while (samples[i+1]?.status===first.status) i++;
+    periods.push({status:first.status,start:first.time,end:samples[i].time,
+      pick:samples[Math.floor((startIndex+i)/2)].time,
+      reason:first.explanation,
+      startReason:boundaryReason(samples[startIndex-1],'start',now),
+      endReason:boundaryReason(samples[i+1],'end',now)});
   }
-  return best;
+  return periods;
 }
 
 function defaultSwimDate(wind, now) {
@@ -359,23 +361,18 @@ function dailyOutlook(input) {
 
   const upcoming = samples.filter(s => Date.parse(s.at) >= input.now);
   const daylight = upcoming.filter(s => s.daylight.ok !== false);
-  const good = longestSwimWindow(upcoming, false);
-  const period = good || longestSwimWindow(upcoming, true);
+  const periods=swimPeriods(samples,input.now);
   // Include early and late daylight hours as well as the familiar daytime timeline.
   const hours = samples.filter(s => s.time.endsWith(':00') &&
     (s.daylight.ok === true || (s.time >= '09:00' && s.time <= '18:00')))
     .map(s => ({time:s.time, status:s.status}));
 
-  if (period) {
-    const pick = period[Math.floor((period.length - 1) / 2)];
-    const warning = period.flatMap(s => s.warnings.active).find(w=>!isSmallCraft(w));
-    const mixed = period.find(s => s.status === 'caution');
-    const reason = mixed?.explanation || warning?.headline ||
-      'Favourable tide, wind and waves. High tide at ' + fmtTime(pick.tide.high.at) + '.';
-    return {status:good ? 'good' : 'caution', start:period[0].time,
-      end:period.at(-1).time, pick:pick.time, reason, warning, hours,
-      startReason:boundaryReason(samples[samples.indexOf(period[0])-1],'start',input.now),
-      endReason:boundaryReason(samples[samples.indexOf(period.at(-1))+1],'end',input.now)};
+  if (periods.length) {
+    // The first favourable period supplies the initial time picker value.
+    const first=periods.find(p=>p.status==='good') || periods[0];
+    const reason=first.status==='good'?'The tide meets your minimum and the wind and waves are favourable.':
+      'Only caution periods are forecast.';
+    return {...first, reason, periods, hours};
   }
 
   let status = 'avoid', title = 'No suitable swim window', reason;
@@ -400,7 +397,7 @@ function dailyOutlook(input) {
     else if (!inWindow.length) reason = 'The tide does not reach your '+(input.minimumTide??defaultMinimumTide)+' m minimum during the remaining swimming daylight.';
     else if (inWindow.every(s => s.wind.status === 'avoid' || s.waves.status === 'avoid')) {
       reason = 'Rough conditions are forecast throughout the daylight tide window.';
-    } else reason = 'No continuous 15-minute period meets the forecast criteria.';
+    } else reason = 'No upcoming forecast check meets the swim criteria.';
   }
   return {status, title, reason, hours};
 }

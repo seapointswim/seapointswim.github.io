@@ -111,13 +111,31 @@ function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
   renderHourlyWeather(outlook);
-  set('daily-day', 'Best forecast window ' + when);
-  set('daily-grade', outlook.start ? grades[outlook.status] : '');
-  $('window-why').hidden=!outlook.startReason;
-  set('why-start',outlook.startReason?'Start '+outlook.start+' · '+outlook.startReason:'');
-  set('why-end',outlook.endReason?'End '+outlook.end+' · '+outlook.endReason:'');
-  set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);
-  set('daily-reason', outlook.reason);
+  set('daily-day','Swim recommendation '+when);
+  const periods=outlook.periods||[];
+  const good=periods.filter(p=>p.status==='good'),caution=periods.filter(p=>p.status==='caution');
+  const range=p=>p.start===p.end?p.start:p.start+'–'+p.end;
+  const main=document.getElementById('daily-period');
+  main.replaceChildren();
+  if(good.length){
+    for(const p of good){
+      const line=document.createElement('span');line.className='swim-range';line.textContent=range(p);main.append(line);
+    }
+  } else main.textContent=periods.length?'No favourable times':outlook.title;
+  set('daily-grade',good.length?'Favourable':'');
+  const note=$('daily-caution');note.hidden=!caution.length;
+  note.textContent=caution.length?'Caution · '+caution.map(range).join(', '):'';
+  set('daily-reason',outlook.reason);
+  $('window-why').hidden=!periods.length;
+  const reasons=$('period-reasons');reasons.replaceChildren();
+  for(const p of periods){
+    const item=document.createElement('p');
+    const heading=document.createElement('strong');heading.textContent=range(p)+' · '+grades[p.status];
+    item.append(heading);
+    const detail=p.status==='caution'?p.reason:p.startReason+' '+p.endReason;
+    item.append(document.createElement('br'),document.createTextNode(detail));
+    reasons.append(item);
+  }
   renderSunTimes(daylight);
   set('daily-highs', highs.map(e => fmtClock(e.t)).join(' and ') || 'Unavailable');
 }

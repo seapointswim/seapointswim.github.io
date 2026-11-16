@@ -5,7 +5,7 @@ button,input{font:inherit}button{cursor:pointer}a{color:#155d69;text-decoration:
 .intro{margin:16px 0 19px}.intro h1{font-weight:790;font-size:clamp(35px,6.8vw,45px);line-height:1.05;letter-spacing:-1.8px;margin:0 0 7px}.intro p{font-size:15px;margin:0;color:#5a7479}
 .chooser{padding:11px 13px 14px;background:#fff;border:1px solid #e1e9e9;border-radius:21px;box-shadow:0 7px 20px #103c4510}.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;padding:4px;background:#f0f5f4;border-radius:14px;gap:3px}.day{font-size:13px;font-weight:750;border:none;background:transparent;color:#517077;border-radius:11px;padding:12px 4px}.day.selected{color:#0c3742;background:#fff;box-shadow:0 2px 8px #163b4119}.picker{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;margin-top:12px}.field{display:flex;flex-direction:column;gap:4px;border-radius:13px;border:1px solid #e1eae9;padding:9px 12px 8px;min-width:0}.field span{font-size:9px;font-weight:850;letter-spacing:1.1px;color:#779297}.field input{width:100%;border:0;outline:none;background:transparent;color:#183b43;font-size:16px;font-weight:700;min-width:0}.field:focus-within{outline:2px solid #78b4af}.dublin-time{text-align:right;color:#789198;font-size:11px;margin:9px 3px 0}
 .answer{margin-top:17px;padding:23px 23px 20px;background:#fff;border-radius:24px;border:1px solid #d8e5e5;box-shadow:0 8px 25px #1a4c5613;position:relative;overflow:hidden}.answer:before{content:"";position:absolute;top:0;bottom:0;left:0;width:5px;background:#8aa2a9}.answer.good:before{background:#16846c}.answer.caution:before{background:#ce9636}.answer.avoid:before{background:#cb6057}.answer.unknown:before{background:#89a3aa}.answer-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.state{font-size:11px;letter-spacing:1.2px;font-weight:850;display:flex;align-items:center;gap:7px;color:#607b83}.status-dot{width:8px;height:8px;background:#97a7ab;border-radius:100%;display:inline-block}.good .state{color:#14725f}.caution .state{color:#9b6b1f}.avoid .state{color:#ae4c46}.good .status-dot{background:#16846c}.caution .status-dot{background:#ce9636}.avoid .status-dot{background:#cb6057}.answer-top time{font-size:12px;color:#70898d;white-space:nowrap;font-weight:600}
-.answer h2{font-size:clamp(32px,6.5vw,43px);line-height:1.08;margin:17px 0 10px;letter-spacing:-1.7px;color:#173c44}.answer.good h2{color:#116550}.answer.caution h2{color:#8e6420}.answer.avoid h2{color:#a6443d}.answer p{color:#4c6b71;font-size:15px;line-height:1.45;margin:0;min-height:22px}.status-rule{height:1px;background:#e4eded;margin:21px 0 15px}/* Each reading states what the forecast predicts in words. */
+.answer h3{font-size:clamp(32px,6.5vw,43px);line-height:1.08;margin:17px 0 10px;letter-spacing:-1.7px;color:#173c44}.answer.good h3{color:#116550}.answer.caution h3{color:#8e6420}.answer.avoid h3{color:#a6443d}.answer p{color:#4c6b71;font-size:15px;line-height:1.45;margin:0;min-height:22px}.status-rule{height:1px;background:#e4eded;margin:21px 0 15px}/* Each reading states what the forecast predicts in words. */
 .summary-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0;}
 .summary-grid>div {padding-right:9px; border-right:1px solid #dce8e7;}
 .summary-grid>div:last-child {border:0; padding-right:0;}
@@ -110,3 +110,32 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 .wx-line{fill:none;stroke:var(--wx-color);stroke-width:2.4;stroke-linejoin:round}
 .wx-line.gust{stroke:#694a82;stroke-dasharray:5 4}.wx-dot,.wx-bar{fill:var(--wx-color)}.wx-dot.gust{fill:#694a82}
 .wx-arrow{stroke:#225954;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}.wx-calm{fill:#225954}
+
+.block-title{margin:3px 0 12px;color:#173f48;font-size:20px;letter-spacing:-.5px}
+.time-title{margin:24px 0 8px}.time-title+.answer{margin-top:0}
+.chooser .tide-brief{padding:0;background:#f1f7f5}
+.tide-brief summary{padding:12px 14px;font-size:14px;font-weight:700;color:#265950;cursor:pointer}
+.tide-brief[open] .tide-text,.tide-brief[open] figure{margin:0 14px 12px}
+.swim-range{display:block}
+#daily-caution{background:#fff7e7;color:#674811;font-weight:650;font-size:14px;border-radius:8px;margin-top:10px;padding:8px 10px}
+.wx-switch{display:inline-flex;gap:3px;padding:3px;border:1px solid #cadbda;border-radius:9px;background:#e9f1ef}
+.wx-switch button{border:0;border-radius:6px;background:transparent;color:#38575d;min-height:36px;padding:5px 16px;font-weight:650}
+.wx-switch button[aria-pressed=true]{color:#fff;background:#225d5b}
+.wx-readings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 5px;margin:8px 0 12px;padding:12px 10px;background:#e8f2f0;border-radius:12px}
+.wx-readings dt{font-size:12px;color:#48666c}
+.wx-readings dd{display:block;margin:4px 0 0;font-weight:750;color:#133d46;font-size:clamp(14px,3.5vw,19px);line-height:1.3;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:390px){.wx-readings{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.wx-scroll{overflow:auto;max-height:30rem;margin-top:12px;border:1px solid #d7e3e3;border-radius:10px}
+.wx-table{width:100%;border-spacing:0;font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.wx-table caption{font-size:14px;font-weight:700;text-align:left;background:#fff;padding:10px}
+.wx-table th,.wx-table td{padding:8px;white-space:nowrap;border-bottom:1px solid #e1e9e9}
+.wx-table th{background:#eef4f3}.wx-table thead th{position:sticky;top:0;z-index:1}
+.wx-table tbody th,.wx-table thead th:first-child{position:sticky;left:0;text-align:left}
+.wx-table thead th:first-child{z-index:2}
+.wx-table tbody td{background:#fff}.wx-table tbody tr:nth-child(even) td{background:#f7faf9}
+.wx-table .wx-current th,.wx-table .wx-current td{background:#deeeea!important}
+.wx-table-arrow{display:inline-block;margin-right:5px;color:#226159;font-weight:700}
+.wx-readout{position:sticky;top:4px;z-index:3;background:#e8f2f0;border:1px solid #cfdfdc;border-radius:12px;margin-bottom:12px}
+#wx-selected-heading{margin:0;padding:9px 10px 0;color:#34575a;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
+.wx-readout .wx-readings{margin:0;background:none;padding-top:8px}
+@media(max-height:560px){.wx-readout{position:static}}
