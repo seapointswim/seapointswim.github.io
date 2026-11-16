@@ -62,7 +62,8 @@ async function latestForecast() {
 function choose(date, time, defaultDay = false) {
   chooseDayFromForecast = defaultDay;
   const local = here();
-  const changedDate = current.date && current.date !== date;
+  const changedDate = current.date ? current.date !== date :
+    !defaultDay && !$('daily-day').textContent.endsWith(dayLabel(date));
   followBestTime = !time;
   current = {date, time: time || (date === local.date ? local.time : '14:00')};
   const daylight=window.SeapointCore.sunTimesForDay(snapshot?.wind?.daily,date);
