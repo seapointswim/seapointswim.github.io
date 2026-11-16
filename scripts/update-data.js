@@ -14,7 +14,7 @@ function initialReadings(html, snapshot) {
   const highs = highTidesForDay(snapshot.events, date).map(e => fmtTime(e.t));
   const dayLabel = new Intl.DateTimeFormat('en-IE', {weekday:'short',day:'numeric',month:'short',
     timeZone:'Europe/Dublin'}).format(new Date(date+'T12:00:00Z'));
-  const fields = {'daily-day':'Best forecast window · '+dayLabel, sunrise:daylight.rise,
+  const fields = {'daily-day':'Swim recommendation · '+dayLabel, sunrise:daylight.rise,
     sunset:daylight.set, 'daily-highs':highs.join(' and ') || 'Unavailable'};
   for (const [id,value] of Object.entries(fields)) {
     const field = new RegExp('(id="' + id + '">)[^<]*');
