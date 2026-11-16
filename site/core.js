@@ -67,23 +67,45 @@ function interpolatedLevel(points,t){
 function nearestHigh(events,t){const highs=events.filter(e=>e.type==='high');if(!highs.length)return null;
   const high=highs.reduce((x,y)=>Math.abs(y.t-t)<Math.abs(x.t-t)?y:x);
   if(Math.abs(high.t-t)>10*HOUR)return null;
-  // Median high in the Seapoint beach model for calendar 2026, in metres above model MSL.
-  const typicalHigh = 1.36;
-  const span = Math.min(4, Math.max(2, 3 + high.h - typicalHigh));
-  return {...high,start:high.t-span*HOUR,end:high.t+span*HOUR,half:span};
+  return high;
+}
+// Approximate Dublin Tide-Forecast scale from 81 paired turning points (see README).
+const dublinScaleOffset = 2.5, minimumTide = 2.5;
+const modelLimit = minimumTide - dublinScaleOffset;
+function crossing(points, low, high) {
+  if (!low || low.type !== 'low' || Math.abs(high.t-low.t)>9*HOUR ||
+      low.h>=modelLimit || high.h<modelLimit) return null;
+  if (!points.length) {
+    // Half-cosine between adjacent saved extrema when samples are unavailable.
+    const phase=Math.acos(1-2*(modelLimit-low.h)/(high.h-low.h))/Math.PI;
+    return low.t+(high.t-low.t)*phase;
+  }
+  const branch=points.filter(p=>p.t>=Math.min(low.t,high.t) && p.t<=Math.max(low.t,high.t));
+  if (low.t>high.t) branch.reverse();
+  let prev=low;
+  for (const p of [...branch, high]) {
+    if (Math.abs(p.t-prev.t)>30*MIN) return null;
+    if (p.h>=modelLimit) return prev.t+(p.t-prev.t)*(modelLimit-prev.h)/(p.h-prev.h);
+    prev=p;
+  }
+  return null;
 }
 function tideInfo(points,events,t){
-  const high=nearestHigh(events,t);if(!high)return {valid:false,detail:'No tide prediction for this time'};
-  const lows=events.filter(e=>e.type==='low');
-  const before=[...lows].filter(e=>e.t<high.t).at(-1)||null;
-  const after=lows.find(e=>e.t>high.t)||null;
+  const high=nearestHigh(events,t);
+  const unknown={valid:false,detail:'No tide prediction for this time'};
+  if (!high) return unknown;
+  const i=events.indexOf(high), before=events[i-1], after=events[i+1];
+  const start=crossing(points,before,high), end=crossing(points,after,high);
+  if (high.h>=modelLimit && (start==null || end==null)) return unknown;
   const low=t<=high.t?before:after;
-  const level=points.length?interpolatedLevel(points,t):null;
-  const aboveLow = level != null && low ? +(level - low.h).toFixed(2) : null;
-  return {valid:true,high:{at:high.t,height:high.h},low:low?{at:low.t,height:low.h}:null,
-    window:{start:high.start,end:high.end,hours:high.half},inside:t>=high.start&&t<=high.end,
-    selectedLevel:level!=null?+level.toFixed(2):null,aboveLow,range:low?+(high.h-low.h).toFixed(2):null,
-    datum:'above model mean sea level',heuristic:true};
+  const level=interpolatedLevel(points,t);
+  if (points.length && level==null) return unknown;
+  return {valid:true,high:{at:high.t,height:high.h+dublinScaleOffset},
+    window:start!=null && end!=null ? {start,end}:null,
+    inside:start!=null && end!=null && t>=start && t<=end,
+    selectedLevel:level==null?null:level+dublinScaleOffset,
+    aboveLow:level!=null && low?level-low.h:null,range:low?high.h-low.h:null,
+    datum:'estimated Dublin tide-table scale'};
 }
 const forecastTimes = new WeakMap();
 function atHour(f,date,time,maxGap=40){
@@ -242,7 +264,7 @@ function assess({date,time,points=[],events=[],wind=null,waves=null,seaTemp=null
   else if(waveGrade.status==='avoid'){status='avoid';headline='Rough seas';explanation='The wave forecast rules out this time.';}
   else if(!tide.valid){status='unknown';headline='No tide prediction';explanation='Cannot assess the swim window without tide information.';}
   else if(light.ok===false){status='avoid';headline='Not a good time';explanation='It is dark or too close to sunset.';}
-  else if(!tide.inside){status='avoid';headline='Better closer to high tide';explanation='Outside your approximate high-tide swimming window.';}
+  else if(!tide.inside){status='avoid';headline='Better closer to high tide';explanation='The predicted tide is below your 2.5 m preference.';}
   else if(windGrade.status==='unknown'||waveGrade.status==='unknown'||light.ok===null){status='unknown';headline='Not enough information';explanation='A daylight, wave or wind forecast is missing.';}
   else if(!alerts.verified||!warningList){status='unknown';headline='Warnings unverified';explanation='The weather warnings or bathing notices could not be verified.';}
   else if(warning||windGrade.status==='caution'||waveGrade.status==='caution'){status='caution';headline='Mixed conditions';explanation=warning?warning.headline:'Some chop is likely. Check the entry steps.';}

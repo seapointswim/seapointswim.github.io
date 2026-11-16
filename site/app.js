@@ -173,9 +173,18 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
    const local = window.SeapointCore.dublinParts(at);
    return local.date === data.date ? local.time : dayLabel(local.date) + ' ' + local.time;
  };
- if(t?.valid){const start=tideClock(t.window.start),end=tideClock(t.window.end),high=tideClock(t.high.at);
-   set('window-main',start+'–'+end+' · High '+high);
-   set('window-sub','High water '+t.high.height.toFixed(2)+' m ('+t.datum+'); your ±'+t.window.hours.toFixed(1)+' h guideline');
+ function duration(ms) {
+   const mins=Math.round(ms/60000);
+   return Math.floor(mins/60)+' h '+(mins%60)+' min';
+ }
+ if(t?.valid){const high=tideClock(t.high.at);
+   if(t.window){
+     set('window-main',tideClock(t.window.start)+'–'+tideClock(t.window.end)+' · High '+high);
+     set('window-sub','Estimated tide at least 2.5 m from '+duration(t.high.at-t.window.start)+' before to '+duration(t.window.end-t.high.at)+' after high tide.');
+   } else {
+     set('window-main','This high tide stays below 2.5 m');
+     set('window-sub','High tide at '+high);
+   }
    set('high-detail',high+' · '+t.high.height.toFixed(2)+' m ('+t.datum+')');
    set('rise-detail',t.aboveLow==null?(t.range==null?'Not available':t.range.toFixed(2)+' m total rise (low → high)'):
      t.aboveLow.toFixed(2)+' m above adjacent low');
