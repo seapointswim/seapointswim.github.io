@@ -83,6 +83,7 @@ function choose(date, time, defaultDay = false) {
     set('window-main','Checking high tide…');
     set('window-sub','');
     loaded=null;
+    $('water-selected').hidden=true;
     loading();
   } else renderSunTimes(daylight);
   if (changedDate) $('tide-figure').hidden=true;
@@ -110,7 +111,7 @@ function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null
   const today = here().date;
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
-  renderHourlyWeather(outlook);
+  renderHourlyWeather();
   set('daily-day','Swim recommendation '+when);
   const periods=outlook.periods||[];
   const good=periods.filter(p=>p.status==='good'),caution=periods.filter(p=>p.status==='caution');
@@ -126,6 +127,8 @@ function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null
   const note=$('daily-caution');note.hidden=!caution.length;
   note.textContent=caution.length?'Caution · '+caution.map(range).join(', '):'';
   set('daily-reason',outlook.reason);
+  set('daily-rain-note',outlook.rainNote||'');
+  $('daily-rain-note').hidden=!outlook.rainNote;
   $('window-why').hidden=!periods.length;
   const reasons=$('period-reasons');reasons.replaceChildren();
   for(const p of periods){
@@ -151,6 +154,36 @@ function renderFactors(tide, waves, wind, missing = 'Unavailable') {
  if (Number.isFinite(wind?.gustKn)) speeds.push('gusts ' + speed(wind.gustKn) + ' m/s');
  set('wind-value', speeds.join(', '));
 }
+function renderWater(data){
+ const now=Date.now(), core=window.SeapointCore;
+ const weather=data?.fresh?snapshot.wind:null, notices=data?.fresh?snapshot.alertsFeed:null;
+ function reading(at, alerts, rain, label){
+   const details=[];
+   if(alerts.active.length)details.push('Official bathing notice: '+alerts.active.map(a=>a.title).join(' · ')+'. Follow the notice at the steps.');
+   else if(!alerts.verified)details.push('Official notices could not be checked.');
+   if(rain.status==='warning'){
+     const future=rain.end>now;
+     details.push((future?'Forecast rain':'Estimated local rain')+' of '+Number(rain.amount.toFixed(1))+' mm in '+(rain.hours===1?'one hour':rain.hours+' hours')+' ending '+fmt(rain.end)+'. Avoid swimming '+(future?'if this rain falls, ':'')+'until '+fmt(rain.until)+' (48 hours after the rain).');
+     if(rain.projectedUntil)details.push('Further forecast rain could extend this to '+fmt(rain.projectedUntil)+'.');
+   }else if(rain.status==='unknown')details.push('Rain data are incomplete. The 48-hour check is unavailable.');
+   else details.push('No heavy rain flagged in the 48-hour check.');
+   if(alerts.verified&&!alerts.active.length)details.push('No active Seapoint bathing notice in the checked feed.');
+   const el=$(label);el.classList.toggle('flagged',rain.status==='warning'||alerts.active.length>0);
+   const strong=document.createElement('strong');
+   strong.textContent=(label==='water-now'?'Now':'Selected time')+' · '+fmt(at);
+   el.replaceChildren(strong,document.createElement('br'),document.createTextNode(details.join(' ')));
+ }
+ const currentRisk=core.rainRiskAt(weather,now),currentAlerts=core.normaliseAlerts(notices,now);
+ reading(now,currentAlerts,currentRisk,'water-now');
+ const selected=$('water-selected');selected.hidden=true;
+ if(data){
+   const differs=data.rainRisk.status!==currentRisk.status||data.rainRisk.end!==currentRisk.end||data.rainRisk.projectedUntil!==currentRisk.projectedUntil||
+     data.water.verified!==currentAlerts.verified||data.water.active.map(a=>a.title).join()!==currentAlerts.active.map(a=>a.title).join();
+   if(differs){
+     selected.hidden=false;reading(Date.parse(data.at),data.water,data.rainRisk,'water-selected');
+   }
+ }
+}
 function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
  set('state', status === 'unknown' ? 'FORECAST UNCERTAIN' : grades[status].toUpperCase());
  set('weather-when',dayLabel(data.date)+' · '+data.time);
@@ -161,6 +194,7 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  const t=data.tide,w=data.waves,wind=data.wind;
  renderFactors(t, w, wind);
  renderTideChart(data);
+ renderWater(data);
  const tideClock = at => {
    const local = window.SeapointCore.dublinParts(Math.round(at/60000)*60000);
    return local.date === data.date ? local.time : dayLabel(local.date) + ' ' + local.time;
@@ -295,6 +329,7 @@ async function load(force=false){
    if (n===seq) render(fromSnapshot(selected));
  } catch(e){if(n!==seq)return;
   snapshot=null;
+  renderWater(null);
   $('tide-figure').hidden=true;
   set('weather-when',dayLabel(current.date)+' · '+current.time);
   renderDaily({status:'unknown',title:'Forecast unavailable',reason:'A current forecast is needed to pick a swim window.'});
@@ -338,3 +373,28 @@ function updateVisibleForecast() {
 }
 document.addEventListener('visibilitychange', updateVisibleForecast);
 setInterval(updateVisibleForecast, 60000);
+
+let commentsLoaded=false;
+$('feedback-comments').ontoggle=async event=>{
+  if(!event.target.open||commentsLoaded)return;
+  commentsLoaded=true;
+  const list=$('feedback-list');
+  list.textContent='Loading comments…';
+  try {
+    const reply=await fetch('https://api.github.com/repos/seapointswim/seapointswim.github.io/issues/4/comments?per_page=10',{signal:AbortSignal.timeout(8000),credentials:'omit'});
+    if(!reply.ok)throw Error('Comments unavailable');
+    const comments=await reply.json();
+    list.replaceChildren();
+    for(const comment of comments){
+      const item=document.createElement('article'),name=document.createElement('strong'),body=document.createElement('p');
+      name.textContent=(comment.user?.login||'GitHub user')+' · '+dayLabel(comment.created_at.slice(0,10));
+      body.textContent=comment.body;
+      item.append(name,body);list.append(item);
+    }
+    if(!comments.length)list.textContent='No comments yet.';
+    else if(comments.length===10)list.append('See the full thread on GitHub.');
+  }catch{
+    list.textContent='Open the GitHub thread below to read the comments.';
+    commentsLoaded=false;
+  }
+};

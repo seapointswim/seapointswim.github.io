@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint15">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint16">
 </head>
 <body>
 <div class="app">
@@ -11,9 +11,10 @@
  <main>
  <div class="intro"><h1>Worth a dip?</h1></div>
  <section id="daily" class="daily unknown" aria-label="Swim recommendation" aria-live="polite" aria-atomic="true">
-   <div class="daily-meta"><span id="daily-day">Recommended swim times</span><span id="daily-grade"></span></div>
-   <h2 id="daily-period">Checking the forecast…</h2>
+   <div class="daily-meta"><h2 class="block-title" id="daily-day">Recommended swim times</h2><span id="daily-grade"></span></div>
+   <p id="daily-period">Checking the forecast…</p>
    <p id="daily-reason">Checking daylight swim times at Seapoint.</p>
+   <p id="daily-rain-note" hidden></p>
    <div id="daily-caution" hidden></div>
    <details id="window-why" hidden><summary>Why these times?</summary>
      <p>Each range groups consecutive favourable checks, 15 minutes apart. A time shown on its own is a single forecast check. Times marked caution have less favourable conditions.</p><div id="period-reasons"></div>
@@ -25,14 +26,27 @@
    </dl>
 
  </section>
+ <section class="water-section" aria-labelledby="water-heading">
+   <h2 class="block-title" id="water-heading">Bathing water at Seapoint</h2>
+   <p id="water-now" class="water-reading">Checking recent rain and official notices…</p>
+   <p id="water-selected" class="water-reading" hidden></p>
+   <details class="water-details"><summary>What the water checks cover</summary>
+     <p>The EPA advises avoiding swimming for 48 hours after heavy rain. Runoff and sewer overflows can carry bacteria into the bay. Follow any signs at the steps.</p>
+     <p>We use Open-Meteo’s hourly rainfall estimates near Seapoint. We flag a wet hour with at least 4 mm in an hour, 10 mm in 24 hours or 15 mm in 48 hours. The clock runs from the end of the last qualifying wet hour. Brief downpours can be missed. These are planning thresholds. Only a water sample measures bacteria.</p>
+     <p>The council samples Seapoint for E. coli and intestinal enterococci. Check the sample date, especially outside summer. The EPA also publishes council notices about incidents such as wastewater discharges.</p>
+     <p><a href="https://www.beaches.ie/frequently-asked-questions/">EPA swimming advice</a> · <a href="https://www.beaches.ie/wp-content/uploads/2025/06/EPA-Information-Note-on-Short-Term-Pollution-Events-final-010818-1-2.pdf">EPA rainfall indicators</a> · <a href="https://www.metoffice.gov.uk/api/assets/file/using-the-map-and-accessing-the-weather-layerspdf?prefix=assets">Hourly rain intensity</a></p>
+   </details>
+   <a class="water-link" href="https://www.beaches.ie/find-a-beach/#/beach/IEEABWC090_0000_0100">Seapoint bathing notices and water samples ↗</a>
+ </section>
  <section class="chooser" aria-labelledby="settings-heading"><h2 class="block-title" id="settings-heading">Plan your swim</h2><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><form class="tide-setting" id="tide-form">
  <div><label for="minimum-tide">Lowest tide I want to swim at (metres)</label><p id="tide-help">On the rising tide, your window opens when the water reaches this height. It closes when the tide falls below it. Raise the number for a shorter window around high tide.</p></div>
  <div class="tide-controls"><input type="number" step="0.1" min="0" required id="minimum-tide" value="2.5" aria-describedby="tide-help"><button type="submit">Apply</button><button type="button" id="reset-tide">Reset to 2.5 m</button></div><span role="status" id="tide-feedback"></span>
  </form>
  <details class="tide-brief"><summary>When the tide meets your minimum</summary><div class="tide-text"><strong id="window-main">Checking high tide…</strong><span id="window-sub">Checking when the tide reaches your minimum.</span></div>
  <figure id="tide-figure" hidden><figcaption id="tide-caption"></figcaption>
- <svg role="img" aria-labelledby="tide-caption tide-legend" id="tide-chart" viewBox="0 0 440 175"></svg>
- <div id="tide-legend">Solid curve: predicted tide · Dashed line: your minimum</div></figure></details>
+ <p id="tide-readout" class="tide-readout"></p>
+ <svg role="slider" tabindex="0" aria-label="Explore predicted tide height" aria-describedby="tide-instructions" aria-orientation="horizontal" id="tide-chart" viewBox="0 0 440 175"></svg>
+ <div id="tide-legend"></div><p id="tide-instructions">Slide along the curve to see the predicted height at any time. You can also use the arrow keys.</p></figure></details>
  <div class="dublin-time">All times are local to Dublin</div></section>
  <h2 class="block-title time-title">Forecast for your selected time</h2>
  <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h3 id="headline">Checking conditions…</h3><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
@@ -42,7 +56,7 @@
  </dl>
  <p class="shore-check">These are forecasts. At the steps, check the water and make sure you can get out easily.</p></section>
  <section class="temperature-brief" id="temperature-brief" aria-label="Weather at your selected time">
- <div class="temperature-heading"><strong>Weather at Seapoint</strong><span><time id="weather-when"></time></span></div>
+ <div class="temperature-heading"><h3>Weather at Seapoint</h3><span><time id="weather-when"></time></span></div>
  <div class="temperature-grid">
    <div class="temperature-metric"><small>WIND</small><strong id="local-speed">—</strong><span id="local-gust">Steps area forecast</span></div>
    <div class="temperature-metric"><small>RAIN</small><strong id="local-rain">—</strong><span id="rain-hour">Hourly total</span></div>
@@ -54,7 +68,7 @@
  </section>
 
  <section class="timeline" aria-label="Alternative swimming times"><div class="section-heading"><h3>Other times that day</h3><span id="hour-day">Tap an hour to check</span></div><div class="hours" id="hours"><div class="hours-placeholder">Checking the hourly outlook…</div></div></section>
- <section class="timeline" aria-label="Hourly weather at Seapoint"><div class="section-heading"><h3>Hourly weather at Seapoint</h3></div>
+ <section class="timeline" aria-label="Hourly weather at Seapoint"><div class="section-heading"><h2 class="block-title">Hourly weather at Seapoint</h2></div>
  <p id="weather-summary">Checking the hourly forecast…</p>
  <div id="wx-view" hidden>
    <div class="wx-switch" role="group" aria-label="Hourly forecast view">
@@ -83,6 +97,7 @@
    <p class="wx-help">Rain and sunshine are totals for the hour ending. A dash means the forecast is unavailable.</p>
  </div></section>
  <section id="note" class="note"><span class="note-symbol">i</span><div><p id="notice">Check the local notices before swimming.</p><a id="warning-guide" href="https://www.met.ie/weather-warnings" hidden>How Met Éireann defines a Small Craft Warning</a></div></section>
+ <h2 class="block-title extra-title">Forecast sources</h2>
  <details id="more" class="details"><summary>See readings and sources <span>+</span></summary><div class="detail-content">
  <div class="readings"><div class="reading"><small>PREDICTED HIGH TIDE</small><strong id="high-detail">—</strong></div><div class="reading"><small>HEIGHT ABOVE ADJACENT LOW</small><strong id="rise-detail">—</strong></div><div class="reading"><small>WAVES · MODELLED</small><strong id="wave-detail">—</strong></div><div class="reading"><small>WIND · FORECAST</small><strong id="wind-detail">—</strong></div><div class="reading"><small>SEA TEMPERATURE · FORECAST OR OFFSHORE</small><strong id="sea-detail">—</strong></div><div class="reading"><small>AIR / WIND CHILL · FORECAST / CALCULATED</small><strong id="chill-detail">—</strong></div></div>
  <p class="tiny">Tide height is the number on a tide table. Water depth at the steps varies with the seabed. We use the Marine Institute’s Seapoint Beach tide curve and estimate heights on the <a href="https://www.tide-forecast.com/locations/Dublin-Ireland/tides/latest">Dublin tide-table scale</a>. This makes the heights and times approximate.</p>
@@ -90,14 +105,20 @@
  <p class="tiny">The planner rules out sustained winds from about 11.3 m/s, onshore winds from 9.8 m/s or gusts from 14.9 m/s. These are rounded planning cut-offs. Met Éireann classifies 11.3 m/s as a <a href="https://www.met.ie/forecasts/marine-inland-lakes/beaufort-scale">strong breeze</a>.</p>
  <p class="tiny">Water below 15°C brings cold-water shock risk (RNLI). The wind-chill index estimates how cold exposed, dry skin feels in moving air, not wet-skin cooling after a swim. Sea temperatures are forecast at a nearby model grid cell, not measured at Seapoint. Any M2 buoy reading is offshore.</p>
  <p class="tiny">An old routine EPA water sample does not automatically reduce the recommendation. Active warnings/restrictions matter. The buoy is offshore; its waves are not necessarily those at Seapoint. Check ferry wash and exit conditions.</p>
- <h4>Data connections</h4><div class="source-list" id="sources"><div>Waiting for data…</div></div><div class="update-stamp" id="stamp">Not yet checked</div>
+ <h3>Data connections</h3><div class="source-list" id="sources"><div>Waiting for data…</div></div><div class="update-stamp" id="stamp">Not yet checked</div>
  </div></details>
+ <section class="feedback-section" aria-labelledby="feedback-title">
+   <h2 class="block-title" id="feedback-title">Website feedback</h2>
+   <p>What would make planning your swim easier? Anyone can read the public comments. Sign in to GitHub to add yours.</p>
+   <details id="feedback-comments"><summary>Show public comments</summary><div id="feedback-list" aria-live="polite"></div></details>
+   <a href="https://github.com/seapointswim/seapointswim.github.io/issues/4">Read or leave a comment on GitHub ↗</a>
+ </section>
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=seapoint14" defer></script>
-<script src="./forecast.js?v=seapoint10" defer></script>
-<script src="./tide-chart.js?v=1" defer></script>
-<script src="./hourly-weather.js?v=3" defer></script>
-<script src="./app.js?v=seapoint14" defer></script>
+<script src="./core.js?v=seapoint16" defer></script>
+<script src="./forecast.js?v=seapoint16" defer></script>
+<script src="./tide-chart.js?v=2" defer></script>
+<script src="./hourly-weather.js?v=4" defer></script>
+<script src="./app.js?v=seapoint16" defer></script>
 </body></html>

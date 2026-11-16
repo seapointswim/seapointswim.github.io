@@ -5,7 +5,7 @@ button,input{font:inherit}button{cursor:pointer}a{color:#155d69;text-decoration:
 .intro{margin:16px 0 19px}.intro h1{font-weight:790;font-size:clamp(35px,6.8vw,45px);line-height:1.05;letter-spacing:-1.8px;margin:0 0 7px}.intro p{font-size:15px;margin:0;color:#5a7479}
 .chooser{padding:11px 13px 14px;background:#fff;border:1px solid #e1e9e9;border-radius:21px;box-shadow:0 7px 20px #103c4510}.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;padding:4px;background:#f0f5f4;border-radius:14px;gap:3px}.day{font-size:13px;font-weight:750;border:none;background:transparent;color:#517077;border-radius:11px;padding:12px 4px}.day.selected{color:#0c3742;background:#fff;box-shadow:0 2px 8px #163b4119}.picker{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;margin-top:12px}.field{display:flex;flex-direction:column;gap:4px;border-radius:13px;border:1px solid #e1eae9;padding:9px 12px 8px;min-width:0}.field span{font-size:9px;font-weight:850;letter-spacing:1.1px;color:#779297}.field input{width:100%;border:0;outline:none;background:transparent;color:#183b43;font-size:16px;font-weight:700;min-width:0}.field:focus-within{outline:2px solid #78b4af}.dublin-time{text-align:right;color:#789198;font-size:11px;margin:9px 3px 0}
 .answer{margin-top:17px;padding:23px 23px 20px;background:#fff;border-radius:24px;border:1px solid #d8e5e5;box-shadow:0 8px 25px #1a4c5613;position:relative;overflow:hidden}.answer:before{content:"";position:absolute;top:0;bottom:0;left:0;width:5px;background:#8aa2a9}.answer.good:before{background:#16846c}.answer.caution:before{background:#ce9636}.answer.avoid:before{background:#cb6057}.answer.unknown:before{background:#89a3aa}.answer-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.state{font-size:11px;letter-spacing:1.2px;font-weight:850;display:flex;align-items:center;gap:7px;color:#607b83}.status-dot{width:8px;height:8px;background:#97a7ab;border-radius:100%;display:inline-block}.good .state{color:#14725f}.caution .state{color:#9b6b1f}.avoid .state{color:#ae4c46}.good .status-dot{background:#16846c}.caution .status-dot{background:#ce9636}.avoid .status-dot{background:#cb6057}.answer-top time{font-size:12px;color:#70898d;white-space:nowrap;font-weight:600}
-.answer h3{font-size:clamp(32px,6.5vw,43px);line-height:1.08;margin:17px 0 10px;letter-spacing:-1.7px;color:#173c44}.answer.good h3{color:#116550}.answer.caution h3{color:#8e6420}.answer.avoid h3{color:#a6443d}.answer p{color:#4c6b71;font-size:15px;line-height:1.45;margin:0;min-height:22px}.status-rule{height:1px;background:#e4eded;margin:21px 0 15px}/* Each reading states what the forecast predicts in words. */
+.answer h3{font-size:var(--subheading-size);line-height:1.08;margin:17px 0 10px;letter-spacing:-.02em;color:#173c44}.answer.good h3{color:#116550}.answer.caution h3{color:#8e6420}.answer.avoid h3{color:#a6443d}.answer p{color:#4c6b71;font-size:15px;line-height:1.45;margin:0;min-height:22px}.status-rule{height:1px;background:#e4eded;margin:21px 0 15px}/* Each reading states what the forecast predicts in words. */
 .summary-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0;}
 .summary-grid>div {padding-right:9px; border-right:1px solid #dce8e7;}
 .summary-grid>div:last-child {border:0; padding-right:0;}
@@ -22,7 +22,7 @@ button,input{font:inherit}button{cursor:pointer}a{color:#155d69;text-decoration:
 }
 
 .temperature-brief{margin-top:13px;background:#fff;border:1px solid #dce8eb;border-radius:18px;padding:16px 16px 13px;box-shadow:0 3px 14px #133c470b}
-.temperature-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:12px}.temperature-heading strong{font-size:15px;letter-spacing:-.3px;color:#153f48}.temperature-heading span{font-size:10px;color:#80999e}
+.temperature-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:12px}.temperature-heading h3{margin:0}.temperature-heading span{font-size:10px;color:#80999e}
 .temperature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .temperature-metric{display:flex;flex-direction:column;gap:3px;padding:7px 8px 9px;border-radius:12px;background:#f1f7f9;min-width:0}
 .temperature-metric small{font-size:9px;letter-spacing:.7px;font-weight:850;color:#55818b;min-height:15px;line-height:1.4}
@@ -32,8 +32,8 @@ button,input{font:inherit}button{cursor:pointer}a{color:#155d69;text-decoration:
 .temperature-brief.cold-water .temperature-note{color:#3c7089}
 .temperature-brief.cold-exit{border-color:#ebcc91;background:#fffdf8}.temperature-brief.cold-exit .temperature-note{color:#936323;font-weight:650}
 .tide-brief{display:flex;gap:12px;padding:15px 17px;align-items:flex-start;border:1px solid #dce9e7;background:#eaf5f2;margin-top:14px;border-radius:18px}.tide-icon{background:#c7e9e0;border-radius:12px;padding:7px 13px;font-size:22px;color:#26655c}.tide-text{display:flex;flex-direction:column;gap:5px;min-width:0}.tide-text small{font-weight:850;font-size:10px;letter-spacing:1px;color:#427971}.tide-text .approx{font-size:9px;color:#7a9b93}.tide-text strong{font-size:18px;letter-spacing:-.5px;color:#174e4b}.tide-text>span{font-size:12px;color:#587d7c}
-.timeline{margin:22px 0 18px}.section-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.section-heading h3{font-size:17px;letter-spacing:-.4px;margin:0 0 13px}.section-heading span{font-size:11px;color:#839b9d}.hours{display:flex;gap:6px;overflow-x:auto;padding:1px 1px 8px;scrollbar-width:thin}.hour{flex:0 0 54px;border:1px solid #dce7e7;border-radius:12px;background:white;padding:10px 1px 9px;display:flex;flex-direction:column;align-items:center;gap:8px;color:#527279;font-size:12px;font-weight:750}.hour {flex-basis:76px;} .hour-grade {font-size:11px; line-height:1.3; font-weight:650;} .hour.good .hour-grade {color:#14634f;} .hour.caution .hour-grade {color:#80560b;} .hour.avoid .hour-grade {color:#963d37;} .hour.selected{border:2px solid #286978;background:#eef7f5;padding-top:9px}.hour:hover{background:#eef7f5}.hours-placeholder{border:1px dashed #cbdcdb;padding:16px;border-radius:13px;color:#718c90;font-size:13px;width:100%}
-.note{display:flex;gap:11px;align-items:flex-start;background:#fff;border:1px solid #e0e9e9;padding:15px;border-radius:15px}.note-symbol{flex:0 0 22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#e5eeee;color:#568189;font-size:14px;font-weight:800}.note p{margin:0;color:#5a777c;font-size:12.5px;line-height:1.5}.details{margin:17px 0 0;border:1px solid #dce6e7;border-radius:15px;background:#fff;overflow:hidden}.details summary{padding:17px;font-size:13px;font-weight:750;display:flex;justify-content:space-between;cursor:pointer;list-style:none}.details summary::-webkit-details-marker{display:none}.details[open] summary span{transform:rotate(45deg)}.detail-content{padding:0 18px 18px}.readings{display:grid;grid-template-columns:1fr 1fr;gap:9px}.reading{display:flex;flex-direction:column;background:#f2f7f7;border-radius:12px;padding:13px 10px;gap:6px}.reading small{color:#728c91;font-size:10px;letter-spacing:.5px;font-weight:700}.reading strong{font-size:15px;color:#1b434b;line-height:1.3}.tiny{font-size:11.5px;color:#71878c;line-height:1.5}.detail-content h4{font-size:13px;margin:20px 0 10px}.source-list{display:flex;flex-direction:column}.source-row{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #ecf1f0;padding:11px 0;font-size:12px}.source-row a{font-weight:600}.source-row small{color:#7e979a;text-align:right}.source-row small.good{color:#16846c}.source-row small.warn{color:#ab782c}.source-row small.bad{color:#b15b50}.update-stamp{font-size:11px;color:#81999b;padding:10px 0}
+.timeline{margin:22px 0 18px}.section-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.section-heading h3{margin:0 0 10px}.section-heading span{font-size:11px;color:#839b9d}.hours{display:flex;gap:6px;overflow-x:auto;padding:1px 1px 8px;scrollbar-width:thin}.hour{flex:0 0 54px;border:1px solid #dce7e7;border-radius:12px;background:white;padding:10px 1px 9px;display:flex;flex-direction:column;align-items:center;gap:8px;color:#527279;font-size:12px;font-weight:750}.hour {flex-basis:76px;} .hour-grade {font-size:11px; line-height:1.3; font-weight:650;} .hour.good .hour-grade {color:#14634f;} .hour.caution .hour-grade {color:#80560b;} .hour.avoid .hour-grade {color:#963d37;} .hour.selected{border:2px solid #286978;background:#eef7f5;padding-top:9px}.hour:hover{background:#eef7f5}.hours-placeholder{border:1px dashed #cbdcdb;padding:16px;border-radius:13px;color:#718c90;font-size:13px;width:100%}
+.note{display:flex;gap:11px;align-items:flex-start;background:#fff;border:1px solid #e0e9e9;padding:15px;border-radius:15px}.note-symbol{flex:0 0 22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#e5eeee;color:#568189;font-size:14px;font-weight:800}.note p{margin:0;color:#5a777c;font-size:12.5px;line-height:1.5}.details{margin:17px 0 0;border:1px solid #dce6e7;border-radius:15px;background:#fff;overflow:hidden}.details summary{padding:17px;font-size:13px;font-weight:750;display:flex;justify-content:space-between;cursor:pointer;list-style:none}.details summary::-webkit-details-marker{display:none}.details[open] summary span{transform:rotate(45deg)}.detail-content{padding:0 18px 18px}.readings{display:grid;grid-template-columns:1fr 1fr;gap:9px}.reading{display:flex;flex-direction:column;background:#f2f7f7;border-radius:12px;padding:13px 10px;gap:6px}.reading small{color:#728c91;font-size:10px;letter-spacing:.5px;font-weight:700}.reading strong{font-size:15px;color:#1b434b;line-height:1.3}.tiny{font-size:11.5px;color:#71878c;line-height:1.5}.detail-content h3{margin:20px 0 10px}.source-list{display:flex;flex-direction:column}.source-row{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #ecf1f0;padding:11px 0;font-size:12px}.source-row a{font-weight:600}.source-row small{color:#7e979a;text-align:right}.source-row small.good{color:#16846c}.source-row small.warn{color:#ab782c}.source-row small.bad{color:#b15b50}.update-stamp{font-size:11px;color:#81999b;padding:10px 0}
 footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;color:#82999c}.noscript{padding:20px;color:#a6443d}
 @media(min-width:540px){.app{padding:0 30px}.answer{padding:28px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -53,7 +53,7 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 .daily.avoid { --tone: #8b3934; --wash: #f9ece9; }
 .daily-meta { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 13px; font-weight: 750; }
 #daily-grade { font-size: 12px; }
-.daily h2 { font-size: clamp(26px, 7.8vw, 44px); margin: 9px 0 6px; letter-spacing: -.045em; line-height: 1.06; font-variant-numeric: tabular-nums; }
+.daily #daily-period { font-weight:750; font-size:clamp(25px,6vw,34px); margin: 9px 0 6px; letter-spacing: -.045em; line-height: 1.06; font-variant-numeric: tabular-nums; }
 .daily p { margin: 0; font-size: 14px; line-height: 1.45; }
 .sun-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--tone) 22%, transparent); }
 .sun-times dt { font-size: 14px; font-weight: 650; }
@@ -111,7 +111,7 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 .wx-line.gust{stroke:#694a82;stroke-dasharray:5 4}.wx-dot,.wx-bar{fill:var(--wx-color)}.wx-dot.gust{fill:#694a82}
 .wx-arrow{stroke:#225954;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}.wx-calm{fill:#225954}
 
-.block-title{margin:3px 0 12px;color:#173f48;font-size:20px;letter-spacing:-.5px}
+.block-title{margin:3px 0 12px;color:#173f48;font-size:var(--section-size);line-height:1.2;letter-spacing:-.025em}
 .time-title{margin:24px 0 8px}.time-title+.answer{margin-top:0}
 .chooser .tide-brief{padding:0;background:#f1f7f5}
 .tide-brief summary{padding:12px 14px;font-size:14px;font-weight:700;color:#265950;cursor:pointer}
@@ -135,9 +135,31 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 .wx-table th:first-child{left:0;z-index:1;text-align:left;border-right:1px solid #b8cecd}
 .wx-table thead th{top:0;z-index:2;border-bottom:1px solid #b8cecd}
 .wx-table thead th:first-child{z-index:3}
-.wx-table thead th.wx-current,.wx-table tbody tr td.wx-current{background:#deeeea}
 .wx-table-arrow{display:inline-block;margin-right:5px;color:#226159;font-weight:700}
 .wx-readout{position:sticky;top:4px;z-index:3;background:#e8f2f0;border:1px solid #cfdfdc;border-radius:12px;margin-bottom:12px}
 #wx-selected-heading{margin:0;padding:9px 10px 0;color:#34575a;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
 .wx-readout .wx-readings{margin:0;background:none;padding-top:8px}
 @media(max-height:560px){.wx-readout{position:static}}
+
+:root{--section-size:clamp(21px,4.4vw,24px);--subheading-size:clamp(17px,3.8vw,19px)}
+main h3{font-size:var(--subheading-size);line-height:1.25;letter-spacing:-.015em}
+.daily-meta h2{margin:0;color:inherit}
+.section-heading{align-items:baseline;flex-wrap:wrap}
+.water-section,.feedback-section{padding:17px 18px;margin:16px 0;background:#fff;border:1px solid #dce6e7;border-radius:16px}
+.water-section p,.feedback-section p{font-size:14px;line-height:1.5;margin:8px 0}
+.water-reading{border-left:3px solid #bdcbd1;padding:3px 0 3px 10px}
+.water-reading.flagged,.daily #daily-rain-note{background:#fff3de;color:#653c11;border-left:3px solid #a85d18;padding:8px 10px}
+.daily #daily-rain-note{margin-top:12px;border-radius:4px}
+.water-section summary,.feedback-section summary{cursor:pointer;font-size:14px;font-weight:650;margin:12px 0}
+.water-section a,.feedback-section a{text-decoration:underline;text-underline-offset:3px}
+.water-link,.feedback-section>a{font-size:14px;font-weight:650}
+.extra-title{margin:24px 0 8px}.extra-title+.details{margin-top:0}
+#tide-chart{touch-action:pan-y pinch-zoom;user-select:none;cursor:crosshair}
+#tide-chart:focus-visible{outline:2px solid #205d69;outline-offset:2px}
+#tide-chart .probe-line{stroke:#315466;stroke-width:1.2;stroke-dasharray:3 3}
+.tide-readout{font-weight:700;font-variant-numeric:tabular-nums;margin:8px 0 0;min-height:1.4em}
+#tide-instructions{margin:6px 0 0;font-size:13px;line-height:1.45}
+
+#feedback-list{margin:10px 0;font-size:14px;overflow-wrap:anywhere}
+#feedback-list article{padding:10px 0;border-top:1px solid #dce6e7}
+#feedback-list article p{white-space:pre-wrap}

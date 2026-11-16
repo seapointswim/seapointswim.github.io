@@ -28,8 +28,7 @@
         dir:finite(dir)&&dir>=0&&dir<=360&&wind!==0?dir:null,
         calm:wind===0,waves:sea?.wave_height,
         rain:finite(air?.rain)&&finite(air?.showers)?air.rain+air.showers:null,
-        sun:finite(air?.sunshine_duration)?Math.round(air.sunshine_duration/60):null,
-        dry:air?.precipitation===0});
+        sun:finite(air?.sunshine_duration)?Math.round(air.sunshine_duration/60):null});
     }
     return result;
   }
@@ -120,20 +119,15 @@
   }
   function renderTable(){
     $('wx-caption').textContent='Hourly readings · '+dayLabel(current.date);
-    const times=rows.map((row,index)=>{
-      const heading=tableHeading('col',clock(row.end));
-      if(index===selected)heading.className='wx-current';
-      return heading;
-    });
+    const times=rows.map(row=>tableHeading('col',clock(row.end)));
     $('wx-times').replaceChildren(tableHeading('col','Hour ending'),...times);
     const body=$('wx-rows');
     body.replaceChildren();
     for(const {key,label,digits,unit} of measures){
       const tr=body.insertRow();
       tr.append(tableHeading('row',unit?label+' ('+unit+')':label));
-      rows.forEach((row,index)=>{
+      rows.forEach(row=>{
         const cell=tr.insertCell();
-        if(index===selected)cell.className='wx-current';
         if(key==='dir'){
           if(finite(row.dir)){
             const arrow=document.createElement('span');
@@ -159,7 +153,7 @@
   $('wx-hour').onchange=e=>select(Number(e.target.value));
   $('wx-back').onclick=()=>select(selected-1);
   $('wx-next').onclick=()=>select(selected+1);
-  window.renderHourlyWeather=function(outlook){
+  window.renderHourlyWeather=function(){
     const fresh=window.SeapointForecast.isFresh(snapshot);
     rows=fresh?hourlyRows(snapshot,current.date):[];
     const available=rows.some(r=>['wind','gust','waves','sun','rain','air'].some(k=>finite(r[k])));
@@ -174,17 +168,7 @@
       selectionKey=key;
     }
     $('wx-hour').replaceChildren(...rows.map((r,i)=>new Option(clock(r.end),String(i))));
-    const now=here(), earliest=now.date===current.date?minutes(now.time):0;
-    const sunny=[];
-    for(const p of (outlook.periods||[]).filter(p=>p.status===outlook.status)){
-      for(const row of rows){
-        if(!row.dry || row.sun==null || row.sun<30)continue;
-        const from=Math.max(row.end-60,minutes(p.start),earliest),to=Math.min(row.end,minutes(p.end));
-        if(to-from>=15)sunny.push({from,to,sun:row.sun});
-      }
-    }
-    const best=sunny.sort((a,b)=>b.sun-a.sun)[0];
-    $('weather-summary').textContent=best?'Sunny and dry · '+clock(best.from)+'–'+clock(best.to):'';
+    $('weather-summary').textContent='';
     renderPlots();select(selected);
     if(!$('wx-table-view').hidden)renderTable();
   };
