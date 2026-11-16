@@ -180,7 +180,12 @@ function renderWater(data){
    const differs=data.rainRisk.status!==currentRisk.status||data.rainRisk.end!==currentRisk.end||data.rainRisk.projectedUntil!==currentRisk.projectedUntil||
      data.water.verified!==currentAlerts.verified||data.water.active.map(a=>a.title).join()!==currentAlerts.active.map(a=>a.title).join();
    if(differs){
-     selected.hidden=false;reading(Date.parse(data.at),data.water,data.rainRisk,'water-selected');
+     selected.hidden=false;
+     if(data.rainRisk.status==='warning'&&data.rainRisk.end===currentRisk.end&&data.rainRisk.projectedUntil&&
+        data.water.verified===currentAlerts.verified&&!data.water.active.length&&!currentAlerts.active.length){
+       selected.classList.add('flagged');
+       selected.textContent='For '+fmt(data.at)+', further forecast rain could extend the precaution to '+fmt(data.rainRisk.projectedUntil)+'.';
+     }else reading(Date.parse(data.at),data.water,data.rainRisk,'water-selected');
    }
  }
 }

@@ -213,6 +213,8 @@ function normaliseAlerts(json,t){
 }
 // Rain values are totals for the hour ending at the provider timestamp.
 // A dry hour cannot restart the 48-hour clock, even if its rolling total is high.
+const rainDateFormat = new Intl.DateTimeFormat('en-IE',{timeZone:TZ,weekday:'short',day:'numeric',month:'short'});
+const rainDeadline=t=>rainDateFormat.format(t)+' at '+fmtTime(t);
 const rainSeries = new WeakMap();
 function rainfallHours(weather) {
   if (!Array.isArray(weather?.hourly?.time)) return new Map();
@@ -341,8 +343,8 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   else if(severeWarning||alerts.active.length){status='avoid';headline='Do not swim';explanation=severeWarning?.headline||'A bathing-water alert applies to Seapoint.';}
   else if(rainRisk.status==='warning'){
     status='avoid';headline='Avoid swimming after heavy rain';
-    const until=dublinParts(rainRisk.projectedUntil||rainRisk.until);
-    explanation=(rainRisk.end>now?'Heavy rain is forecast. If it falls, avoid swimming until ':'Recent rain may affect water quality. The 48-hour precaution runs until ')+until.time+' on '+until.date+(rainRisk.projectedUntil?' if further forecast rain falls.':'.');
+    explanation=(rainRisk.end>now?'If the forecast rain falls, avoid swimming until ':'Recent rain may affect water quality. Avoid swimming until ')+rainDeadline(rainRisk.until)+'.';
+    if(rainRisk.projectedUntil)explanation+=' Further forecast rain could extend this to '+rainDeadline(rainRisk.projectedUntil)+'.';
   }
   else if(windGrade.status==='avoid'){
     status='avoid';headline=windGrade.short;
@@ -445,6 +447,7 @@ function dailyOutlook(input) {
   } else if (wetChecks.length===daylight.length) {
     title='Avoid swimming after heavy rain';
     reason=wetChecks.at(-1).explanation;
+    return {status,title,reason,hours};
   } else if (daylight.some(s => s.status === 'unknown')) {
     status = 'unknown';
     title = 'Forecast incomplete';
