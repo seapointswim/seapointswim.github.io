@@ -138,6 +138,9 @@ function atHour(f,date,time,maxGap=40){
   const value={};for(const [k,arr] of Object.entries(hourly))if(k!=='time'&&Array.isArray(arr))value[k]=arr[best]??null;
   return value;
 }
+function formatWindSpeed(knots) {
+  return Number.isFinite(knots) ? (knots * 1852 / 3600).toFixed(1) : null;
+}
 function windStatus(kn, gust, deg) {
   const onshore = Number.isFinite(deg) && (deg >= 315 || deg <= 105);
   if (Number.isFinite(gust) && gust >= 29) return {status:'avoid', short:'Strong gusts'};
@@ -270,7 +273,7 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   else if(severeWarning||alerts.active.length){status='avoid';headline='Do not swim';explanation=severeWarning?.headline||'A bathing-water alert applies to Seapoint.';}
   else if(windGrade.status==='avoid'){
     status='avoid';headline=windGrade.short;
-    explanation=windGrade.short==='Strong gusts' ? 'Gusts of '+Math.round(gust*1.852)+' km/h are forecast.' : 'Sustained winds of '+Math.round(wk*1.852)+' km/h are forecast.';
+    explanation=windGrade.short==='Strong gusts' ? 'Gusts of '+formatWindSpeed(gust)+' m/s are forecast.' : 'Sustained winds of '+formatWindSpeed(wk)+' m/s are forecast.';
   }
   else if(waveGrade.status==='avoid'){status='avoid';headline='Rough seas';explanation='The wave forecast rules out this time.';}
   else if(!tide.valid){status='unknown';headline='No tide prediction';explanation='Cannot assess the swim window without tide information.';}
@@ -278,7 +281,7 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   else if(!tide.inside){status='avoid';headline='Below your tide minimum';explanation='The tide is forecast below your '+minimumTide+' m minimum.';}
   else if(windGrade.status==='unknown'||waveGrade.status==='unknown'||light.ok===null){status='unknown';headline='Not enough information';explanation='A daylight, wave or wind forecast is missing.';}
   else if(!alerts.verified||!warningList){status='unknown';headline='Warnings unverified';explanation='The weather warnings or bathing notices could not be verified.';}
-  else if(warning||windGrade.status==='caution'||waveGrade.status==='caution'){status='caution';headline=windGrade.status==='caution'?'Breezy at Seapoint':waveGrade.status==='caution'?'Choppy water forecast':'Weather warning applies';explanation=windGrade.status==='caution'?'Wind '+Math.round(wk*1.852)+' km/h, gusting to '+Math.round(gust*1.852)+' km/h.':waveGrade.status==='caution'?'Waves around '+wavesM.toFixed(1)+' m are forecast near Seapoint.':warning.headline;}
+  else if(warning||windGrade.status==='caution'||waveGrade.status==='caution'){status='caution';headline=windGrade.status==='caution'?'Breezy at Seapoint':waveGrade.status==='caution'?'Choppy water forecast':'Weather warning applies';explanation=windGrade.status==='caution'?'Wind '+formatWindSpeed(wk)+' m/s, gusting to '+formatWindSpeed(gust)+' m/s.':waveGrade.status==='caution'?'Waves around '+wavesM.toFixed(1)+' m are forecast near Seapoint.':warning.headline;}
   const caveats=[];
   if(!warningList)caveats.push('Marine warnings could not be checked');
   if(!alerts.verified)caveats.push('Bathing alerts could not be checked');
@@ -373,6 +376,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours};
 }
 
-const SeapointCore={defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

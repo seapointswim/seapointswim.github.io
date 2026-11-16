@@ -7,7 +7,7 @@ try {
   const saved=localStorage.getItem('minimumTide');
   if (saved && Number.isFinite(Number(saved)) && Number(saved)>=0) minimumTide=Number(saved);
 } catch {}
-const speed=value=>Number.isFinite(value)?Math.round(value*1.852):null;
+const speed=window.SeapointCore.formatWindSpeed;
 const fmt=(iso)=>new Intl.DateTimeFormat('en-IE',{timeZone:'Europe/Dublin',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));
 const fmtClock=(iso)=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
 function here(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return {date:`${p.year}-${p.month}-${p.day}`,time:`${p.hour}:${p.minute}`}}
@@ -130,7 +130,7 @@ function renderHourlyWeather(outlook) {
     Math.min(r.end,minutes(outlook.end))-Math.max(r.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0)>=15)
     .sort((a,b)=>b.sun-a.sun)[0];
   set('weather-summary',best?'Sunny and dry within the swim window: '+clock(Math.max(best.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0))+'–'+clock(Math.min(best.end,minutes(outlook.end)))+'.':'Rain and sunshine are totals for the hour ending at the time shown.');
-  for (const [label,format] of [['Hour ending',r=>clock(r.end)],['Wind (km/h)',r=>r.wind??'—'],['Gusts (km/h)',r=>r.gust??'—'],['Air (°C)',r=>Number.isFinite(r.air)?Math.round(r.air):'—'],['Rain (mm)',r=>r.rain===null?'—':Number(r.rain.toFixed(2))],['Sun (min)',r=>r.sun??'—']]) {
+  for (const [label,format] of [['Hour ending',r=>clock(r.end)],['Wind (m/s)',r=>r.wind??'—'],['Gusts (m/s)',r=>r.gust??'—'],['Air (°C)',r=>Number.isFinite(r.air)?Math.round(r.air):'—'],['Rain (mm)',r=>r.rain===null?'—':Number(r.rain.toFixed(2))],['Sun (min)',r=>r.sun??'—']]) {
     const tr=table.insertRow();
     const heading=document.createElement('th');heading.scope='row';heading.textContent=label;tr.append(heading);
     for(const row of rows){const cell=tr.insertCell();cell.textContent=format(row);if(row===best)cell.className='sunny';}
@@ -156,8 +156,8 @@ function renderFactors(tide, waves, wind, missing = 'Unavailable') {
  set('wave-value', Number.isFinite(waves?.heightM) ? waves.heightM.toFixed(2) + ' m' : '');
  set('wind-main', wind?.short || missing);
  const speeds = [];
- if (Number.isFinite(wind?.speedKn)) speeds.push(Math.round(wind.speedKn * 1.852) + ' km/h');
- if (Number.isFinite(wind?.gustKn)) speeds.push('gusts ' + Math.round(wind.gustKn * 1.852) + ' km/h');
+ if (Number.isFinite(wind?.speedKn)) speeds.push(speed(wind.speedKn) + ' m/s');
+ if (Number.isFinite(wind?.gustKn)) speeds.push('gusts ' + speed(wind.gustKn) + ' m/s');
  set('wind-value', speeds.join(', '));
 }
 function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
@@ -192,11 +192,11 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
      t.aboveLow.toFixed(2)+' m above adjacent low');
  } else{set('window-main','Tide data unavailable');set('window-sub','A reliable tide height is needed to plan the swim.');set('high-detail','—');set('rise-detail','—')}
  set('wave-detail',w?.heightM==null?'Not available':w.heightM.toFixed(2)+' m · '+w.short);
- set('wind-detail',wind?.speedKn==null?'Not available':wind.speedKn.toFixed(0)+' kn'+(wind.gustKn!=null?' · gust '+wind.gustKn.toFixed(0):''));
+ set('wind-detail',wind?.speedKn==null?'Not available':speed(wind.speedKn)+' m/s'+(wind.gustKn!=null?' · gusts '+speed(wind.gustKn)+' m/s':''));
  const temp=data.temperature||{};
  const localWind=speed(wind?.speedKn),gust=speed(wind?.gustKn);
- set('local-speed',localWind==null?'—':localWind+' km/h');
- set('local-gust',gust==null?'Gust forecast unavailable':'Gusts '+gust+' km/h');
+ set('local-speed',localWind==null?'—':localWind+' m/s');
+ set('local-gust',gust==null?'Gust forecast unavailable':'Gusts '+gust+' m/s');
  const rain=data.rain;
  set('local-rain',rain?.amount==null?'—':Number(rain.amount.toFixed(2))+' mm');
  set('rain-hour',rain?.amount==null?'Rain forecast unavailable':'Hour ending '+rain.end);
