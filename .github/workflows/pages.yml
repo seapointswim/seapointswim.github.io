@@ -53,3 +53,16 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
+
+  arm-next-refresh:
+    needs: refresh-and-publish
+    if: always() && !cancelled() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: write
+    steps:
+      - name: Arm the next check even after a bot-triggered publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run forecast-backup.yml --repo "$GITHUB_REPOSITORY" --ref main -f previous_run="$GITHUB_RUN_ID"
