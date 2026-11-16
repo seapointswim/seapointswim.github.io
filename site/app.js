@@ -104,10 +104,42 @@ function renderSunTimes(daylight) {
   set('sunrise', daylight.rise || 'Unavailable');
   set('sunset', daylight.set || 'Unavailable');
 }
+function renderHourlyWeather(outlook) {
+  const table=$('weather-table');
+  table.replaceChildren();
+  const hourly=snapshot?.wind?.hourly;
+  const rows=[];
+  const next=nextDate(current.date,1);
+  for (const [i,stamp] of (hourly?.time || []).entries()) {
+    if (stamp<=current.date+'T00:00' || stamp>next+'T00:00') continue;
+    const rain=hourly.rain?.[i],showers=hourly.showers?.[i],seconds=hourly.sunshine_duration?.[i];
+    const amount=Number.isFinite(rain)&&Number.isFinite(showers)?rain+showers:null;
+    const sun=Number.isFinite(seconds)?Math.round(seconds/60):null;
+    // The provider timestamps totals at the end of each hour.
+    const end=stamp.slice(11,16)==='00:00'?1440:Number(stamp.slice(11,13))*60;
+    rows.push({end,rain:amount,sun,dry:hourly.precipitation?.[i]===0});
+  }
+  if (!rows.some(r=>r.rain!==null || r.sun!==null)) {
+    set('weather-summary','Hourly rain and sunshine forecasts are unavailable for this date.');
+    return;
+  }
+  const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3));
+  const clock=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  const best=rows.filter(r=>outlook.start && r.dry && r.sun>=30 &&
+    Math.min(r.end,minutes(outlook.end))-Math.max(r.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0)>=15)
+    .sort((a,b)=>b.sun-a.sun)[0];
+  set('weather-summary',best?'Sunny and dry within the swim window: '+clock(Math.max(best.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0))+'–'+clock(Math.min(best.end,minutes(outlook.end)))+'.':'Forecast rainfall and minutes of sunshine in each hour.');
+  for (const [label,format] of [['Hour ending',r=>clock(r.end)],['Rain (mm)',r=>r.rain===null?'—':Number(r.rain.toFixed(2))],['Sun (min)',r=>r.sun??'—']]) {
+    const tr=table.insertRow();
+    const heading=document.createElement('th');heading.scope='row';heading.textContent=label;tr.append(heading);
+    for(const row of rows){const cell=tr.insertCell();cell.textContent=format(row);if(row===best)cell.className='sunny';}
+  }
+}
 function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null, current.date), highs = []) {
   const today = here().date;
   const when = current.date === today ? 'today' : current.date === nextDate(today, 1) ? 'tomorrow' : '· ' + dayLabel(current.date);
   $('daily').className = 'daily ' + outlook.status;
+  renderHourlyWeather(outlook);
   set('daily-day', 'Best forecast window ' + when);
   set('daily-grade', outlook.start ? (isSmallCraft(outlook.warning) ? 'Coastal wind warning' : grades[outlook.status]) : '');
   set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);

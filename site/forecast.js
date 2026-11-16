@@ -152,7 +152,7 @@ function isFresh(snapshot, now=Date.now()) {
 }
 async function fetchWind(fetchImpl=fetch, retryConnection=false) {
   const windUrl=url('https://api.open-meteo.com/v1/forecast',{
-    latitude:'53.29694',longitude:'-6.15862',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:1,forecast_days:8
+    latitude:'53.29694',longitude:'-6.15862',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,showers,sunshine_duration,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:1,forecast_days:8
   });
   return attempt('wind',async()=>{
     let weather;

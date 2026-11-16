@@ -63,3 +63,10 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 
 #warning-guide {display:inline-block; margin-top:6px; text-decoration:underline; font-size:13px;}
 #warning-guide[hidden] {display:none;}
+
+#weather-summary{font-size:.9rem;line-height:1.45}
+.weather-scroll{overflow-x:auto}
+#weather-table{border-collapse:separate;border-spacing:0;font-size:.85rem;font-variant-numeric:tabular-nums}
+#weather-table th,#weather-table td{padding:.45rem .65rem;text-align:center;white-space:nowrap;border-bottom:1px solid #dbe4e4}
+#weather-table th:first-child{position:sticky;left:0;background:#fff;text-align:left}
+#weather-table .sunny{background:#fff3c9}

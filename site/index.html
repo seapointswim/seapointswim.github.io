@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint7">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint8">
 </head>
 <body>
 <div class="app">
@@ -21,6 +21,9 @@
    <p id="daily-reason">Looking for the best daylight swim window at Seapoint.</p>
  </section>
  <section class="chooser" aria-label="Choose a swimming time"><div class="tabs" role="group" aria-label="Select day"><button id="today" class="day selected" type="button">Today</button><button id="tomorrow" class="day" type="button">Tomorrow</button><button id="other" class="day" type="button">Other date</button></div><div class="picker"><label class="field"><span>DAY</span><input type="date" id="date" aria-label="Swimming date in Dublin"></label><label class="field timefield"><span>CHECK A TIME</span><input type="time" id="time" step="900" aria-label="Swimming time in Dublin"></label></div><div class="dublin-time">All times are local to Dublin</div></section>
+ <section class="timeline" aria-label="Hourly rainfall and sunshine"><div class="section-heading"><h3>Rain &amp; sunshine</h3></div>
+ <p id="weather-summary">Checking the hourly forecast…</p>
+ <div class="weather-scroll" tabindex="0" aria-label="Scroll to see each hour"><table id="weather-table"></table></div></section>
  <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h2 id="headline">Checking conditions…</h2><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
    <div><dt>Tide</dt><dd id="tide-main">Checking…</dd><dd class="reading-value" id="tide-value"></dd></div>
    <div><dt>Waves</dt><dd id="wave-main">Checking…</dd><dd class="reading-value" id="wave-value"></dd></div>
@@ -50,7 +53,7 @@
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=seapoint7" defer></script>
-<script src="./forecast.js?v=seapoint7" defer></script>
-<script src="./app.js?v=seapoint7" defer></script>
+<script src="./core.js?v=seapoint8" defer></script>
+<script src="./forecast.js?v=seapoint8" defer></script>
+<script src="./app.js?v=seapoint8" defer></script>
 </body></html>
