@@ -69,12 +69,12 @@ test('a missing wave API does not fabricate a good verdict',async()=>{
  assert.equal(d.sources.waves.status,'unavailable');
  assert.equal(assess(d).status,'unknown');
 });
-test('dated Seapoint model fallback has the same station and datum and no interpolated level',async()=>{
+test('dated Seapoint model fallback estimates the selected level between saved turning points',async()=>{
  const d=await buildSnapshot({fetchImpl:makeFetch({tide:false}),now});
  assert.equal(d.sources.tide.status,'published-copy');
  const a=assess(d);assert.equal(a.tide.datum,'estimated Dublin tide-table scale');
- assert.equal(a.tide.selectedLevel,null);
- assert.equal(a.tide.aboveLow,null);
+ assert.ok(a.tide.selectedLevel <= a.tide.high.height);
+ assert.ok(a.tide.aboveLow >= 0);
 });
 test('missing warning and alerts feed is shown as unverified, not invented safe',async()=>{
  const d=await buildSnapshot({fetchImpl:makeFetch({warning:false,alerts:false}),now});
@@ -158,12 +158,13 @@ test('a gusty hour breaks the window, and today only shows time still ahead', as
  assert.equal(dark.start,undefined);
 });
 
-test('a warning is shown on a mixed window and a bathing restriction removes it', async () => {
+test('regional small craft warnings are context while severe warnings and bathing restrictions block a swim', async () => {
  const input = await dayInput();
  input.warningFeed = [{regions:['EI810'],headline:'Small Craft warning',level:'Yellow'}];
  const mixed = core.dailyOutlook(input);
- assert.equal(mixed.status,'caution');
- assert.equal(mixed.reason,'Small Craft warning');
+ assert.equal(mixed.status,'good');
+ assert.equal(core.assess({...input,time:mixed.pick}).warnings.active[0].headline,'Small Craft warning');
+ assert.equal(core.dailyOutlook({...input,warningFeed:[{regions:['EI810'],headline:'Gale warning',level:'Yellow'}]}).start,undefined);
  input.alertsFeed = {count:1,list:[{beach_id:'IEEABWC090_0000_0100',start_date:day,end_date:day}]};
  assert.equal(core.dailyOutlook(input).start,undefined);
  assert.match(core.dailyOutlook(input).reason,/bathing-water/);
@@ -293,4 +294,14 @@ test('2.5 m crossings include equality and use each side of high tide separately
  assert.equal(read(20*minute).selectedLevel,2.7);
  assert.equal(read(60*minute).inside,true);
  assert.equal(read(60*minute+1).inside,false);
+});
+
+test('the tide minimum changes both the selected result and the best period', async () => {
+ const input=await dayInput();
+ const standard=core.dailyOutlook(input);
+ const higher=core.dailyOutlook({...input,minimumTide:3.5});
+ assert.ok(higher.start>standard.start && higher.end<standard.end);
+ assert.equal(core.assess({...input,time:higher.pick,minimumTide:4}).tide.inside,false);
+ assert.equal(core.dailyOutlook({...input,minimumTide:4}).start,undefined);
+ assert.ok(core.assess({...input,time:'09:00',minimumTide:0}).tide.inside);
 });
