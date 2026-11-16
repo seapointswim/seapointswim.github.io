@@ -2,11 +2,12 @@
 const $=id=>document.getElementById(id);
 const SOURCE_LABEL={tide:'Marine Institute · Seapoint beach tide model',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
 const grades = {good:'Favourable', caution:'Caution', avoid:'Avoid', unknown:'Unknown'};
-function isSmallCraft(warning) {
-  return !!warning && /\bsmall[ -]craft\b/i.test(warning.type + ' ' + warning.headline);
-}
-const coastalWarning = 'Met Éireann issues a Small Craft Warning for small boats when winds of at least 22 knots (about 41 km/h) are forecast in coastal waters. If waves are breaking over the steps, stay out.';
-
+let minimumTide=window.SeapointCore.defaultMinimumTide;
+try {
+  const saved=localStorage.getItem('minimumTide');
+  if (saved && Number.isFinite(Number(saved)) && Number(saved)>=0) minimumTide=Number(saved);
+} catch {}
+const speed=value=>Number.isFinite(value)?Math.round(value*1.852):null;
 const fmt=(iso)=>new Intl.DateTimeFormat('en-IE',{timeZone:'Europe/Dublin',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));
 const fmtClock=(iso)=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
 function here(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Dublin',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));return {date:`${p.year}-${p.month}-${p.day}`,time:`${p.hour}:${p.minute}`}}
@@ -107,7 +108,7 @@ function renderSunTimes(daylight) {
 function renderHourlyWeather(outlook) {
   const table=$('weather-table');
   table.replaceChildren();
-  const hourly=snapshot?.wind?.hourly;
+  const hourly=window.SeapointForecast.isFresh(snapshot)?snapshot?.wind?.hourly:null;
   const rows=[];
   const next=nextDate(current.date,1);
   for (const [i,stamp] of (hourly?.time || []).entries()) {
@@ -117,10 +118,10 @@ function renderHourlyWeather(outlook) {
     const sun=Number.isFinite(seconds)?Math.round(seconds/60):null;
     // The provider timestamps totals at the end of each hour.
     const end=stamp.slice(11,16)==='00:00'?1440:Number(stamp.slice(11,13))*60;
-    rows.push({end,rain:amount,sun,dry:hourly.precipitation?.[i]===0});
+    rows.push({end,rain:amount,sun,wind:speed(hourly.wind_speed_10m?.[i]),gust:speed(hourly.wind_gusts_10m?.[i]),air:hourly.temperature_2m?.[i],dry:hourly.precipitation?.[i]===0});
   }
-  if (!rows.some(r=>r.rain!==null || r.sun!==null)) {
-    set('weather-summary','Hourly rain and sunshine forecasts are unavailable for this date.');
+  if (!rows.length) {
+    set('weather-summary','Hourly weather is unavailable for this date.');
     return;
   }
   const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3));
@@ -128,8 +129,8 @@ function renderHourlyWeather(outlook) {
   const best=rows.filter(r=>outlook.start && r.dry && r.sun>=30 &&
     Math.min(r.end,minutes(outlook.end))-Math.max(r.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0)>=15)
     .sort((a,b)=>b.sun-a.sun)[0];
-  set('weather-summary',best?'Sunny and dry within the swim window: '+clock(Math.max(best.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0))+'–'+clock(Math.min(best.end,minutes(outlook.end)))+'.':'Forecast rainfall and minutes of sunshine in each hour.');
-  for (const [label,format] of [['Hour ending',r=>clock(r.end)],['Rain (mm)',r=>r.rain===null?'—':Number(r.rain.toFixed(2))],['Sun (min)',r=>r.sun??'—']]) {
+  set('weather-summary',best?'Sunny and dry within the swim window: '+clock(Math.max(best.end-60,minutes(outlook.start),current.date===here().date?minutes(here().time):0))+'–'+clock(Math.min(best.end,minutes(outlook.end)))+'.':'Rain and sunshine are totals for the hour ending at the time shown.');
+  for (const [label,format] of [['Hour ending',r=>clock(r.end)],['Wind (km/h)',r=>r.wind??'—'],['Gusts (km/h)',r=>r.gust??'—'],['Air (°C)',r=>Number.isFinite(r.air)?Math.round(r.air):'—'],['Rain (mm)',r=>r.rain===null?'—':Number(r.rain.toFixed(2))],['Sun (min)',r=>r.sun??'—']]) {
     const tr=table.insertRow();
     const heading=document.createElement('th');heading.scope='row';heading.textContent=label;tr.append(heading);
     for(const row of rows){const cell=tr.insertCell();cell.textContent=format(row);if(row===best)cell.className='sunny';}
@@ -141,18 +142,16 @@ function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null
   $('daily').className = 'daily ' + outlook.status;
   renderHourlyWeather(outlook);
   set('daily-day', 'Best forecast window ' + when);
-  set('daily-grade', outlook.start ? (isSmallCraft(outlook.warning) ? 'Coastal wind warning' : grades[outlook.status]) : '');
+  set('daily-grade', outlook.start ? grades[outlook.status] : '');
   set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);
-  set('daily-reason', isSmallCraft(outlook.warning) ? coastalWarning : outlook.reason);
+  set('daily-reason', outlook.reason);
   renderSunTimes(daylight);
   set('daily-highs', highs.map(e => fmtClock(e.t)).join(' and ') || 'Unavailable');
 }
 function set(id,s){$(id).textContent=s}
 function renderFactors(tide, waves, wind, missing = 'Unavailable') {
- const highTime = tide?.valid ? window.SeapointCore.dublinParts(tide.high.at) : null;
- const highDay = highTime && highTime.date !== current.date ? dayLabel(highTime.date) + ' ' : '';
- set('tide-main', tide?.valid ? (tide.inside ? 'Within high-tide window' : 'Outside high-tide window') : missing);
- set('tide-value', highTime ? 'High at ' + highDay + highTime.time : '');
+ set('tide-main', tide?.valid ? (tide.inside ? 'Meets your minimum' : 'Below your minimum') : missing);
+ set('tide-value', tide?.valid ? tide.selectedLevel.toFixed(2)+' m · minimum '+tide.minimumTide+' m' : '');
  set('wave-main', waves?.short || missing);
  set('wave-value', Number.isFinite(waves?.heightM) ? waves.heightM.toFixed(2) + ' m' : '');
  set('wind-main', wind?.short || missing);
@@ -162,11 +161,10 @@ function renderFactors(tide, waves, wind, missing = 'Unavailable') {
  set('wind-value', speeds.join(', '));
 }
 function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
- const warningExplainsTime = status === 'caution' && data.warnings.active.some(w => isSmallCraft(w) && w.headline === data.explanation);
  set('state', status === 'unknown' ? 'FORECAST UNCERTAIN' : grades[status].toUpperCase());
  set('chosen','At '+data.time+' · '+dayLabel(data.date));
- set('headline',warningExplainsTime ? 'A coastal wind warning applies' : data.headline);
- set('explain',warningExplainsTime ? 'Strong winds are forecast in the wider coastal area. The figures below are the local forecast for the time you selected.' : data.explanation);
+ set('headline',data.headline);
+ set('explain',data.explanation);
  const t=data.tide,w=data.waves,wind=data.wind;
  renderFactors(t, w, wind);
  const tideClock = at => {
@@ -179,11 +177,15 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  }
  if(t?.valid){const high=tideClock(t.high.at);
    if(t.window){
-     set('window-main',tideClock(t.window.start)+'–'+tideClock(t.window.end)+' · High '+high);
-     set('window-sub','Estimated tide at least 2.5 m from '+duration(t.high.at-t.window.start)+' before to '+duration(t.window.end-t.high.at)+' after high tide.');
+     const {start,end}=t.window;
+     set('window-main',start!=null && end!=null ? tideClock(start)+'–'+tideClock(end) : start!=null?'From '+tideClock(start):end!=null?'Until '+tideClock(end):'Above your minimum throughout the available tide forecast');
+     const offsets=[];
+     if(start!=null) offsets.push(duration(t.high.at-start)+' before');
+     if(end!=null) offsets.push(duration(end-t.high.at)+' after');
+     set('window-sub','High tide at '+high+'. '+(offsets.length?'The '+minimumTide+' m window extends '+offsets.join(' and ')+' high tide.':''));
    } else {
-     set('window-main','This high tide stays below 2.5 m');
-     set('window-sub','High tide at '+high);
+     set('window-main','Below your '+minimumTide+' m minimum');
+     set('window-sub','High tide reaches about '+t.high.height.toFixed(2)+' m at '+high+'.');
    }
    set('high-detail',high+' · '+t.high.height.toFixed(2)+' m ('+t.datum+')');
    set('rise-detail',t.aboveLow==null?(t.range==null?'Not available':t.range.toFixed(2)+' m total rise (low → high)'):
@@ -192,6 +194,13 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  set('wave-detail',w?.heightM==null?'Not available':w.heightM.toFixed(2)+' m · '+w.short);
  set('wind-detail',wind?.speedKn==null?'Not available':wind.speedKn.toFixed(0)+' kn'+(wind.gustKn!=null?' · gust '+wind.gustKn.toFixed(0):''));
  const temp=data.temperature||{};
+ const localWind=speed(wind?.speedKn),gust=speed(wind?.gustKn);
+ set('local-speed',localWind==null?'—':localWind+' km/h');
+ set('local-gust',gust==null?'Gust forecast unavailable':'Gusts '+gust+' km/h');
+ const rain=data.rain;
+ set('local-rain',rain?.amount==null?'—':Number(rain.amount.toFixed(2))+' mm');
+ set('rain-hour',rain?.amount==null?'Rain forecast unavailable':'Hour ending '+rain.end);
+
  const degrees=v=>typeof v==='number'&&Number.isFinite(v)?Math.round(v)+'°C':'—';
  set('sea-temp',degrees(temp.waterC));set('air-temp',degrees(temp.airC));set('feels-temp',degrees(temp.feelsC));
  set('feels-label',(temp.feelsLabel||'Feels like').toUpperCase());
@@ -203,9 +212,9 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  set('chill-detail',temp.airC==null?'Not available':Number(temp.airC).toFixed(1)+'°C air'+(temp.feelsC!=null?' · '+Number(temp.feelsC).toFixed(1)+'°C '+(temp.feelsLabel||'feels like').toLowerCase():''));
  const bits=[];
  if(data.fresh) {
-   for (const warning of data.warnings.active) bits.push('Met Éireann · ' + warning.headline + '.');
+   for (const warning of data.warnings.active) bits.push((window.SeapointCore.isSmallCraft(warning)?'Wider coastal waters · ':'Met Éireann · ') + warning.headline + '.');
  }
- $('warning-guide').hidden = !data.fresh || !data.warnings.active.some(isSmallCraft);
+ $('warning-guide').hidden = !data.fresh || !data.warnings.active.some(window.SeapointCore.isSmallCraft);
  if(data.water?.active?.length)bits.push('EPA bathing alert at Seapoint. Follow the official notice.');
  if(data.warnings&&!data.warnings.verified)bits.push('Marine warnings could not be verified.');
  if(data.water&&!data.water.verified)bits.push('Bathing alerts could not be verified.');
@@ -231,7 +240,7 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
 function loading(){if(!loaded){set('headline','Checking conditions…');set('explain','Looking up tides, waves and wind.');$('answer').className='answer unknown';set('state','CHECKING');set('chosen',dayLabel(current.date)+' · '+current.time)}}
 function fromSnapshot(s){
  const c=window.SeapointCore;
- const base={date:current.date,time:current.time,
+ const base={date:current.date,time:current.time,minimumTide,
    points:s.tidePoints||[],events:s.events||[],wind:s.wind||null,waves:s.waves||null,
    seaTemp:s.seaTemp||null,buoyTemp:s.buoyTemp||null,warningFeed:s.warningFeed||null,
    alertsFeed:s.alertsFeed||null,now:Date.now(),sources:{tides:{fallback:!!s.notes?.tides?.fallback}}};
@@ -251,6 +260,10 @@ function fromSnapshot(s){
    $('time').value = current.time;
  }
  const output=c.assess(base);
+ const end=Math.ceil(c.localToUtc(base.date,base.time)/3600000)*3600000;
+ const hour=c.dublinParts(end),rainHour=c.atHour(base.wind,hour.date,hour.time,0);
+ if (Number.isFinite(rainHour?.rain) && Number.isFinite(rainHour?.showers))
+   output.rain={amount:rainHour.rain+rainHour.showers,end:hour.time};
  output.direct=!!s.retrievedDirectly;
  output.highs=c.highTidesForDay(base.events, current.date);
  output.outlook=outlook;
@@ -292,11 +305,22 @@ async function load(force=false){
   $('warning-guide').hidden = true;
   renderFactors(null, null, null);
   set('window-main','Tide data unavailable');set('window-sub','A successful scheduled refresh is required.');set('high-detail','—');set('rise-detail','—');
-  for(const id of ['sea-temp','air-temp','feels-temp'])set(id,'—');
+  for(const id of ['sea-temp','air-temp','feels-temp','local-speed','local-gust','local-rain','rain-hour'])set(id,'—');
   set('sea-temp-source','Unavailable');set('feels-source','Unavailable');set('temperature-note','No forecast data.');
   set('stamp','No published snapshot yet.');
   $('hours').innerHTML='<div class="hours-placeholder">No current hourly outlook</div>';
  }}
+const tideField=$('minimum-tide');
+tideField.value=minimumTide;
+function applyTide(value) {
+  minimumTide=value;
+  tideField.value=value;
+  try {localStorage.setItem('minimumTide',String(value));} catch {}
+  set('tide-feedback','Using '+value+' m.');
+  load();
+}
+$('tide-form').onsubmit=event=>{event.preventDefault();if(tideField.validity.valid)applyTide(tideField.valueAsNumber);};
+$('reset-tide').onclick=()=>applyTide(window.SeapointCore.defaultMinimumTide);
 $('today').onclick=()=>choose(here().date);
 $('tomorrow').onclick=()=>choose(nextDate(here().date,1));
 $('other').onclick=()=>{$('date').showPicker?.();$('date').focus()};

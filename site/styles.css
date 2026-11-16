@@ -70,3 +70,14 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 #weather-table th,#weather-table td{padding:.45rem .65rem;text-align:center;white-space:nowrap;border-bottom:1px solid #dbe4e4}
 #weather-table th:first-child{position:sticky;left:0;background:#fff;text-align:left}
 #weather-table .sunny{background:#fff3c9}
+
+.tide-setting{border-top:1px solid #dce6e5;margin:14px 0 0;padding:12px 2px 0}
+.tide-setting label{font-size:15px;font-weight:700}
+.tide-setting p{font-size:13px;color:#47646c;line-height:1.4;margin:4px 0 8px}
+.tide-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tide-controls input,.tide-controls button{border:1px solid #b7cccd;border-radius:8px;padding:8px;background:white;color:#194851}
+.tide-controls input{width:5em;font-size:16px}
+.tide-controls button[type=submit]{background:#205662;color:white}
+#reset-tide{border-color:transparent;text-decoration:underline}
+#tide-feedback{font-size:13px}
+.temperature-grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
