@@ -34,10 +34,14 @@ function makeFetch({tide=true,wind=true,waves=true,warning=true,alerts=true}={})
     return tide?okText(cosineTideCSV()):{ok:false,status:503};
   }
   if(u.pathname.includes('IWBNetwork'))return okText(`time,WindSpeed,WaveHeight,SeaTemperature\nUTC,knots,metres,degree_C\n2026-11-15T07:00:00Z,4.3,0.4,10.4\n`);
-  if(u.hostname==='api.open-meteo.com')return wind?okText(JSON.stringify({
-   hourly:{time:hours,wind_speed_10m:hours.map(()=>6),wind_gusts_10m:hours.map(()=>8),wind_direction_10m:hours.map(()=>240),temperature_2m:hours.map(()=>7),apparent_temperature:hours.map(()=>4),is_day:hours.map(x=>x.slice(11,13)>='08'&&x.slice(11,13)<='16'?1:0)},
-   daily:{time:[day],sunrise:[day+'T07:50'],sunset:[day+'T16:22']}
-  })): {ok:false,status:502};
+  if(u.hostname==='api.open-meteo.com'){
+   const history=Array.from({length:5*24},(_,i)=>new Date(Date.parse(day+'T00:00Z')-(120-i)*3600000).toISOString().slice(0,16));
+   const times=history.concat(hours);
+   return wind?okText(JSON.stringify({utc_offset_seconds:0,
+    hourly:{time:times,wind_speed_10m:times.map(()=>6),wind_gusts_10m:times.map(()=>8),wind_direction_10m:times.map(()=>240),temperature_2m:times.map(()=>7),apparent_temperature:times.map(()=>4),rain:times.map(()=>0),showers:times.map(()=>0),is_day:times.map(x=>x.slice(11,13)>='08'&&x.slice(11,13)<='16'?1:0)},
+    daily:{time:[day],sunrise:[day+'T07:50'],sunset:[day+'T16:22']}
+   })): {ok:false,status:502};
+  }
   if(u.hostname==='marine-api.open-meteo.com'){
    if(u.searchParams.get('hourly')==='sea_surface_temperature')return okText(JSON.stringify({hourly:{time:hours,sea_surface_temperature:hours.map(()=>11.2)}}));
    return waves?okText(JSON.stringify({hourly:{time:hours,wave_height:hours.map(()=>.25),wave_period:hours.map(()=>4.1),wave_direction:hours.map(()=>70)}})):{ok:false,status:503};
@@ -147,7 +151,7 @@ test('strong winds and strong gusts each exclude an otherwise suitable day', asy
 test('a gusty hour breaks the window, and today only shows time still ahead', async () => {
  const input = await dayInput();
  const start = core.dailyOutlook(input).start;
- input.wind.hourly.wind_gusts_10m[14]=34;
+ input.wind.hourly.wind_gusts_10m[input.wind.hourly.time.indexOf(day+'T14:00')]=34;
  const split = core.dailyOutlook(input);
  assert.equal(split.status,'good');
  assert.ok(split.end <= '13:30' || split.start >= '14:45');
