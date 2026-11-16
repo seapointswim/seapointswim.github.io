@@ -9,7 +9,7 @@ A mobile-first tide/sea-state planner for Seapoint, Dublin. **Static hosting, no
 - The page calculates the swimming verdict for the exact Dublin-local date/time in your browser from the published snapshot. If the snapshot is missing or over 90 minutes old, the browser requests fresh readings directly. The EPA’s Seapoint-specific beaches.ie feed supplies current bathing notices on this path.
 - The visible status and source list disclose unavailable providers. Weather or notices that cannot be verified cannot produce a favourable window. Dated tide predictions and daylight remain available separately. An old routine water-quality sample *does not automatically* mean Caution; active bathing alerts are checked separately.
 - Today, Tomorrow, custom date/time and the hour-by-hour overview work without a backend. Sea temperature, air temperature and wind chill appear immediately below the verdict.
-- Tide preferences (roughly ±3 hours around high tide, varying with high-water height) are **heuristic**; no invented minimum water depth at the steps or metre safety threshold is used. Height above adjacent low tide is calculated only from levels with the same datum.
+- Tide windows use an inclusive 2.5 m minimum on the approximate Dublin Tide-Forecast scale. We compared 81 corresponding highs and lows at both stations from 17 November to 7 December 2026 (within 90 minutes, same type). The Dublin table minus the Seapoint model averaged 2.51 m (range 2.35–2.66 m). We use a rounded 2.5 m offset. This empirical scale comparison is approximate. Crossings use linear interpolation of local model samples, or separate half-cosines between adjacent saved turning points when samples are unavailable.
 
 ## Publish using GitHub Pages
 
