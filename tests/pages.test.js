@@ -305,3 +305,21 @@ test('the tide minimum changes both the selected result and the best period', as
  assert.equal(core.dailyOutlook({...input,minimumTide:4}).start,undefined);
  assert.ok(core.assess({...input,time:'09:00',minimumTide:0}).tide.inside);
 });
+
+test('recommendation lists every favourable check, including isolated times, and separates caution', async () => {
+ const input=await dayInput();
+ input.minimumTide=0;
+ // One yellow warning splits the morning. A single 15-minute check falls between warnings.
+ input.warningFeed=[['09:00','10:00'],['10:30','11:00']].map(([start,end])=>({
+   regions:['EI810'],headline:'Local weather warning',level:'Yellow',
+   onset:day+'T'+start+':00Z',expiry:day+'T'+end+':00Z'
+ }));
+ const plan=core.dailyOutlook(input);
+ assert.ok(plan.periods.some(p=>p.status==='good' && p.start==='10:15' && p.end==='10:15'));
+ assert.ok(plan.periods.filter(p=>p.status==='good').length>=3);
+ for(let at=core.localToUtc(day,'08:00');at<=core.localToUtc(day,'17:00');at+=15*60000){
+   const time=core.fmtTime(at), status=core.assess({...input,time}).status;
+   const matches=plan.periods.filter(p=>p.start<=time && time<=p.end).map(p=>p.status);
+   assert.deepEqual(matches,['good','caution'].includes(status)?[status]:[],time);
+ }
+});
