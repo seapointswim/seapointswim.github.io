@@ -327,3 +327,34 @@ test('recommendation lists every favourable check, including isolated times, and
    assert.deepEqual(matches,['good','caution'].includes(status)?[status]:[],time);
  }
 });
+
+test('heavy rain blocks the daily windows and expires 48 hours after the last qualifying wet hour',async()=>{
+ const input=await dayInput(),hour=input.wind.hourly;
+ const end=Date.parse('2026-11-14T06:00Z'),index=hour.time.indexOf('2026-11-14T06:00');
+ hour.showers[index]=4;
+ const risk=t=>core.rainRiskAt(input.wind,t);
+ assert.equal(risk(end-3600001).status,'clear');
+ assert.equal(risk(end-3600000).status,'warning');
+ assert.equal(risk(end+48*3600000-1).end,end);
+ assert.equal(risk(end+48*3600000).status,'clear');
+ const plan=core.dailyOutlook(input);
+ assert.match(plan.title,/heavy rain/);
+ assert.equal(plan.periods,undefined);
+ assert.equal(core.assess({...input,time:'14:00'}).status,'avoid');
+});
+test('sustained rain triggers the rolling amounts, including across midnight; gaps never imply dry weather',async()=>{
+ for(const [hours,mm] of [[24,10],[48,15]]){
+   const input=await dayInput(),h=input.wind.hourly, end=h.time.indexOf(day+'T10:00');
+   for(let i=end-hours+1;i<=end;i++)h.rain[i]=mm/hours;
+   const t=core.localToUtc(day,'10:00');
+   const risk=core.rainRiskAt(input.wind,t);
+   assert.equal(risk.status,'warning');
+   assert.equal(risk.hours,hours);
+   assert.equal(risk.end,t);
+   assert.equal(core.rainRiskAt(input.wind,t+48*3600000).status,'clear');
+ }
+ const input=await dayInput(),h=input.wind.hourly;
+ h.rain[h.time.indexOf(day+'T09:00')]=null;
+ assert.equal(core.rainRiskAt(input.wind,core.localToUtc(day,'14:00')).status,'unknown');
+ assert.equal(core.assess({...input,time:'14:00'}).status,'unknown');
+});
