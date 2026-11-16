@@ -89,15 +89,30 @@ function crossing(points, low, high, modelLimit) {
   }
   return null;
 }
+// Both the chart and the verdict use the same local model or saved tide curve.
+function modelLevel(points, a, b, t) {
+  if (!a || !b || a.type===b.type || b.t-a.t>9*HOUR) return null;
+  if (points.length) return interpolatedLevel(points,t);
+  const phase=(t-a.t)/(b.t-a.t);
+  return a.h+(b.h-a.h)*(1-Math.cos(Math.PI*phase))/2;
+}
+function tideCurve(points, events, start, end) {
+  const samples=[];
+  let right=0;
+  for(let t=start;t<=end;t+=5*MIN) {
+    while(right<events.length && events[right].t<t) right++;
+    const h=modelLevel(points,events[right-1],events[right],t);
+    samples.push({t,height:h==null?null:h+dublinScaleOffset});
+  }
+  return samples;
+}
 function tideInfo(points,events,t,minimumTide=defaultMinimumTide){
   const unknown={valid:false,detail:'No tide prediction for this time'};
   const right=events.findIndex(e=>e.t>=t);
   const a=events[right-1], b=events[right];
-  if (!a || !b || a.type===b.type || b.t-a.t>9*HOUR) return unknown;
-  const high=a.type==='high'?a:b, low=a.type==='low'?a:b;
-  const phase=(t-a.t)/(b.t-a.t);
-  const level=points.length?interpolatedLevel(points,t):a.h+(b.h-a.h)*(1-Math.cos(Math.PI*phase))/2;
+  const level=modelLevel(points,a,b,t);
   if (level==null) return unknown;
+  const high=a.type==='high'?a:b, low=a.type==='low'?a:b;
   const modelLimit=minimumTide-dublinScaleOffset;
   // A low minimum can span several highs. Follow the connected interval on each side.
   function edge(direction) {
@@ -316,6 +331,18 @@ function defaultSwimDate(wind, now) {
   return new Date(Date.parse(local.date + 'T12:00:00Z') + DAY).toISOString().slice(0, 10);
 }
 
+function boundaryReason(neighbour, edge, now) {
+  if (!neighbour) return 'This is the edge of the selected day.';
+  if (Date.parse(neighbour.at)<now) return 'Earlier checks have already passed.';
+  if (neighbour.headline==='Not a good time') {
+    return edge==='end'?'The daylight cut-off is 25 minutes before sunset ('+neighbour.daylight.set+').':
+      'The daylight window opens 15 minutes after sunrise ('+neighbour.daylight.rise+').';
+  }
+  if (neighbour.headline==='Choppy water forecast') {
+    return 'At '+neighbour.time+', waves are forecast at '+neighbour.waves.heightM.toFixed(2)+' m. Caution starts at 0.60 m.';
+  }
+  return 'At '+neighbour.time+' · '+neighbour.explanation;
+}
 function dailyOutlook(input) {
   const samples = [];
   const midnight = localToUtc(input.date, '00:00');
@@ -346,7 +373,9 @@ function dailyOutlook(input) {
     const reason = mixed?.explanation || warning?.headline ||
       'Favourable tide, wind and waves. High tide at ' + fmtTime(pick.tide.high.at) + '.';
     return {status:good ? 'good' : 'caution', start:period[0].time,
-      end:period.at(-1).time, pick:pick.time, reason, warning, hours};
+      end:period.at(-1).time, pick:pick.time, reason, warning, hours,
+      startReason:boundaryReason(samples[samples.indexOf(period[0])-1],'start',input.now),
+      endReason:boundaryReason(samples[samples.indexOf(period.at(-1))+1],'end',input.now)};
   }
 
   let status = 'avoid', title = 'No suitable swim window', reason;
@@ -376,6 +405,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours};
 }
 
-const SeapointCore={formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={tideCurve,formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

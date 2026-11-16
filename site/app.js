@@ -85,6 +85,7 @@ function choose(date, time, defaultDay = false) {
     loaded=null;
     loading();
   } else renderSunTimes(daylight);
+  if (changedDate) $('tide-figure').hidden=true;
   $('date').value = date;
   $('time').value = current.time;
   for (const [id, selected] of Object.entries({
@@ -143,6 +144,9 @@ function renderDaily(outlook, daylight = window.SeapointCore.sunTimesForDay(null
   renderHourlyWeather(outlook);
   set('daily-day', 'Best forecast window ' + when);
   set('daily-grade', outlook.start ? grades[outlook.status] : '');
+  $('window-why').hidden=!outlook.startReason;
+  set('why-start',outlook.startReason?'Start '+outlook.start+' · '+outlook.startReason:'');
+  set('why-end',outlook.endReason?'End '+outlook.end+' · '+outlook.endReason:'');
   set('daily-period', outlook.start ? outlook.start + '–' + outlook.end : outlook.title);
   set('daily-reason', outlook.reason);
   renderSunTimes(daylight);
@@ -162,13 +166,16 @@ function renderFactors(tide, waves, wind, missing = 'Unavailable') {
 }
 function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
  set('state', status === 'unknown' ? 'FORECAST UNCERTAIN' : grades[status].toUpperCase());
+ set('weather-when',dayLabel(data.date)+' · '+data.time);
+ $('weather-when').dateTime=data.at;
  set('chosen','At '+data.time+' · '+dayLabel(data.date));
  set('headline',data.headline);
  set('explain',data.explanation);
  const t=data.tide,w=data.waves,wind=data.wind;
  renderFactors(t, w, wind);
+ renderTideChart(data);
  const tideClock = at => {
-   const local = window.SeapointCore.dublinParts(at);
+   const local = window.SeapointCore.dublinParts(Math.round(at/60000)*60000);
    return local.date === data.date ? local.time : dayLabel(local.date) + ' ' + local.time;
  };
  function duration(ms) {
@@ -182,7 +189,7 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
      const offsets=[];
      if(start!=null) offsets.push(duration(t.high.at-start)+' before');
      if(end!=null) offsets.push(duration(end-t.high.at)+' after');
-     set('window-sub','High tide at '+high+'. '+(offsets.length?'The '+minimumTide+' m window extends '+offsets.join(' and ')+' high tide.':''));
+     set('window-sub','High tide at '+high+'. '+(offsets.length?'At '+minimumTide+' m, you have '+offsets.join(' and ')+' high tide.':''));
    } else {
      set('window-main','Below your '+minimumTide+' m minimum');
      set('window-sub','High tide reaches about '+t.high.height.toFixed(2)+' m at '+high+'.');
@@ -264,6 +271,9 @@ function fromSnapshot(s){
  const hour=c.dublinParts(end),rainHour=c.atHour(base.wind,hour.date,hour.time,0);
  if (Number.isFinite(rainHour?.rain) && Number.isFinite(rainHour?.showers))
    output.rain={amount:rainHour.rain+rainHour.showers,end:hour.time};
+ const midnight=c.localToUtc(base.date,'00:00'),nextMidnight=c.localToUtc(nextDate(base.date,1),'00:00');
+ output.minimum=minimumTide;
+ output.curve=c.tideCurve(base.points,base.events,midnight,nextMidnight);
  output.direct=!!s.retrievedDirectly;
  output.highs=c.highTidesForDay(base.events, current.date);
  output.outlook=outlook;
@@ -298,6 +308,8 @@ async function load(force=false){
    if (n===seq) render(fromSnapshot(selected));
  } catch(e){if(n!==seq)return;
   snapshot=null;
+  $('tide-figure').hidden=true;
+  set('weather-when',dayLabel(current.date)+' · '+current.time);
   renderDaily({status:'unknown',title:'Forecast unavailable',reason:'A current forecast is needed to pick a swim window.'});
   loaded=null;$('answer').className='answer unknown';set('state','NOT UPDATED');set('chosen',dayLabel(current.date)+' · '+current.time);
   set('headline','Cannot check yet');set('explain','No current published forecast is available. No conditions have been invented.');

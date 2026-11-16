@@ -81,3 +81,18 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 #reset-tide{border-color:transparent;text-decoration:underline}
 #tide-feedback{font-size:13px}
 .temperature-grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+
+#window-why{margin-top:8px;font-size:13px}
+#window-why summary{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+#window-why p{margin:6px 0;font-size:13px}
+.chooser .tide-brief{display:block;margin-top:10px}
+.tide-text>span{font-size:14px;line-height:1.4;color:#325d59}
+#tide-figure{margin:14px 0 0;border-top:1px solid #c6ddd6;padding-top:10px}
+#tide-caption{font-size:13px;font-weight:700;color:#174e4b}
+#tide-chart{display:block;width:100%;height:auto;font-size:12px;fill:#3d5e5f}
+#tide-chart .grid{stroke:#c5dbd6}
+#tide-chart .curve{fill:none;stroke:#10685c;stroke-width:2.8;stroke-linejoin:round}
+#tide-chart .minimum{stroke:#98562e;stroke-width:1.8;stroke-dasharray:5 4}
+#tide-chart .selected-time{fill:#153e48;stroke:white;stroke-width:1.5}
+#tide-legend{font-size:12px;line-height:1.4;color:#355955}
+#weather-when{font-size:13px;color:#3c5b64;text-align:right}
