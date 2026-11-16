@@ -150,10 +150,26 @@ function isFresh(snapshot, now=Date.now()) {
   const age=now-Date.parse(snapshot?.generatedAt);
   return Number.isFinite(age) && age>=-20*60000 && age<=90*60000;
 }
-async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNotices=false}={}){
+async function fetchWind(fetchImpl=fetch, retryConnection=false) {
   const windUrl=url('https://api.open-meteo.com/v1/forecast',{
     latitude:'53.29694',longitude:'-6.15862',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:1,forecast_days:8
   });
+  return attempt('wind',async()=>{
+    let weather;
+    try {
+      weather=await readRemote(windUrl,'json',fetchImpl);
+    } catch (error) {
+      if (!retryConnection || !(error instanceof TypeError || error.name==='AbortError' ||
+          /^HTTP 5/.test(error.message))) throw error;
+      await new Promise(resolve=>setTimeout(resolve,750));
+      weather=await readRemote(windUrl,'json',fetchImpl);
+    }
+    if (!validHourly(weather,'wind_speed_10m') || !validHourly(weather,'wind_gusts_10m') ||
+        !validHourly(weather,'temperature_2m')) throw Error('Incomplete wind or air-temperature forecast');
+    return weather;
+  });
+}
+async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNotices=false}={}){
   const waveParams={latitude:'53.30',longitude:'-6.12',hourly:'wave_height,wave_period,wave_direction',timezone:'Europe/Dublin',cell_selection:'sea',past_days:1,forecast_days:8};
   const seaUrl=url('https://marine-api.open-meteo.com/v1/marine',{
     latitude:'53.30',longitude:'-6.12',hourly:'sea_surface_temperature',timezone:'Europe/Dublin',cell_selection:'sea',past_days:1,forecast_days:8
@@ -161,11 +177,7 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNot
   const buoyUrl='https://erddap.marine.ie/erddap/tabledap/IWBNetwork.csv?time%2CWindSpeed%2CWaveHeight%2CSeaTemperature&'+'station_id=%22M2%22&' + encodeURIComponent('time>=' + iso(now-12*HOUR));
   const promises={
     tide:getTides(now-2*24*HOUR,now+10*24*HOUR,{fetchImpl,loadTables}),
-    wind:attempt('wind',async()=>{
-      const d=await readRemote(windUrl,'json',fetchImpl);
-      if(!validHourly(d,'wind_speed_10m')||!validHourly(d,'temperature_2m'))throw Error('Incomplete wind or air-temperature forecast');
-      return d;
-    }),
+    wind:fetchWind(fetchImpl,true),
     waves:attempt('waves',async()=>{
       const [ewam,best]=await Promise.allSettled([
         readRemote(url('https://marine-api.open-meteo.com/v1/marine',{...waveParams,models:'dwd_ewam',forecast_days:3}),'json',fetchImpl),
@@ -206,7 +218,7 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNot
   return out;
 }
 
-const api={buildSnapshot,getTides,tideUrl,savedEvents,isFresh,parseBuoyCsv,mergeWaveForecast,fetchAllAlerts,fetchBeachNotices};
+const api={buildSnapshot,fetchWind,getTides,tideUrl,savedEvents,isFresh,parseBuoyCsv,mergeWaveForecast,fetchAllAlerts,fetchBeachNotices};
 if (typeof module === 'object') module.exports=api;
 else window.SeapointForecast=api;
 })();

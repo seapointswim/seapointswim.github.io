@@ -53,7 +53,15 @@ async function latestForecast() {
     if (response.ok) published=await response.json();
     if (published?.schemaVersion!==2 || published?.notes?.tides?.stationID!==window.SeapointCore.SEAPOINT_STATION) published=null;
   } catch { /* The official feeds are the independent recovery path. */ }
-  if (marine.isFresh(published)) return published;
+  if (marine.isFresh(published)) {
+    if (!published.wind) {
+      set('daily-reason','Checking the local wind forecast directly.');
+      const wind=await marine.fetchWind();
+      published.wind=wind.value;
+      published.sources.wind=wind.meta;
+    }
+    return published;
+  }
   set('daily-reason','Checking the latest readings directly with the forecast providers.');
   const live=await marine.buildSnapshot({loadTables,beachNotices:true});
   live.retrievedDirectly=true;
