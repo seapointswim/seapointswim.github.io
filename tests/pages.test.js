@@ -223,7 +223,7 @@ test('Seapoint beach turning points drive the display, the assessment and the da
  const plan = core.dailyOutlook({date:'2026-11-16',now,points:s.tidePoints,events:s.events,
    wind:s.wind,waves:s.waves,warningFeed:s.warningFeed,alertsFeed:s.alertsFeed});
  assert.ok(plan.start >= '13:00' && plan.end >= '15:00');
- const noCover = await buildSnapshot({fetchImpl:makeFetch({tide:false}),now:Date.parse('2027-06-15T12:00:00Z')});
+ const noCover = await buildSnapshot({fetchImpl:makeFetch({tide:false}),now:Date.parse('2032-06-15T12:00:00Z')});
  assert.deepEqual(noCover.events,[]);
  assert.equal(noCover.sources.tide.status,'unavailable');
 });
@@ -236,4 +236,48 @@ test('a high just after local midnight belongs to the new Dublin day in summer',
  const event = {type:'high',t:Date.parse('2026-06-14T23:25:00Z'),h:3.4};
  assert.deepEqual(core.highTidesForDay([event],'2026-06-14'),[]);
  assert.deepEqual(core.highTidesForDay([event],'2026-06-15'),[event]);
+});
+const forecast=require('../site/forecast');
+const tables=require('../site/data/tide-tables.json');
+test('real beach tide predictions cross New Year, summer time and leap day during an outage', async()=>{
+ for (const [date,expected] of [
+  ['2026-12-31',['04:45','17:05']], ['2027-01-01',['05:45','18:05']],
+  ['2027-07-01',['09:40','22:15']], ['2028-02-29',['01:30','13:35']],
+  ['2028-12-31',['11:05','23:30']]
+ ]) {
+  const d=await buildSnapshot({fetchImpl:makeFetch({tide:false}),now:core.localToUtc(date,'12:00')});
+  assert.equal(d.sources.tide.status,'published-copy');
+  assert.deepEqual(core.highTidesForDay(d.events,date).map(e=>core.fmtTime(e.t)),expected);
+ }
+});
+test('a later year comes directly from the same official station without an archive or code change',async()=>{
+ const beginning=Date.parse('2031-12-30T00:00:00Z');
+ const lines=cosineTideCSV().trimEnd().split('\n');
+ const future=lines.slice(0,2).concat(lines.slice(2).map((line,i)=>
+   new Date(beginning+i*600000).toISOString()+line.slice(line.indexOf(',')))).join('\n');
+ const first=Date.parse('2031-12-31T00:00:00Z'),last=Date.parse('2032-01-03T00:00:00Z');
+ const result=await forecast.getTides(first,last,{loadTables:()=>tables,fetchImpl:async u=>{
+   assert.ok(decodeURIComponent(u).includes('time<=2032-01-03'));return okText(future);
+ }});
+ assert.equal(result.meta.status,'ok');
+ assert.ok(core.highTidesForDay(result.value.events,'2032-01-01').length);
+});
+test('a partial feed at New Year still gets January high tides from the saved model',async()=>{
+ const first=Date.parse('2026-12-31T00:00:00Z'),last=Date.parse('2027-01-02T00:00:00Z');
+ const csv='time,stationID,sea_surface_height\nUTC,,metres\n'+Array.from({length:145},(_,i)=>
+   new Date(first+i*600000).toISOString()+','+core.SEAPOINT_STATION+','+Math.cos(i/12).toFixed(2)).join('\n');
+ const d=await forecast.getTides(first,last,{loadTables:()=>tables,fetchImpl:async()=>okText(csv)});
+ assert.equal(d.meta.status,'published-copy');
+ assert.deepEqual(core.highTidesForDay(d.value.events,'2027-01-01').map(e=>core.fmtTime(e.t)),['05:45','18:05']);
+});
+test('direct refresh checks beach restrictions and rejects missing or wrong beach notices',async()=>{
+ const beach={Code:'IEEABWC090_0000_0100',HasRestrictionInPlace:false,ClosedTypeName:'Open (N)',Incidents:[]};
+ const read=()=>forecast.fetchBeachNotices(async()=>okText(JSON.stringify({value:[beach]})));
+ assert.deepEqual(await read(),{count:0,list:[]});
+ beach.HasRestrictionInPlace=true;
+ assert.equal(core.normaliseAlerts(await read(),now).active.length,1);
+ beach.Code='wrong';
+ await assert.rejects(read,/Incomplete/);
+ assert.equal(forecast.isFresh({generatedAt:new Date(now-91*60000).toISOString()},now),false);
+ assert.equal(forecast.isFresh({generatedAt:new Date(now).toISOString()},now),true);
 });
