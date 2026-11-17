@@ -178,8 +178,18 @@ main h3{font-size:var(--subheading-size);line-height:1.25;letter-spacing:-.015em
 #local-direction,#local-probability{display:block;margin-top:4px}
 
 .wx-chart-scroll{overflow-x:auto;border:1px solid #d7e3e3;border-radius:10px;padding:6px 0;margin:10px 0;overscroll-behavior-x:contain}
-.wx-chart-scroll .weather-strip{overflow:visible;margin-left:42px;gap:0;padding:0}
+.wx-chart-scroll .weather-strip{overflow:visible;margin-left:52px;gap:0;padding:0}
 .wx-chart-scroll .weather-strip button{flex:0 0 64px;box-sizing:border-box;border-radius:0;border-color:transparent;background:transparent}
 .wx-chart-scroll .weather-strip button[aria-pressed=true]{border-color:#526e91;background:#f0f4fa}
 .wx-chart-scroll .wx-heading{position:sticky;left:0;width:max-content;max-width:calc(100vw - 80px);padding:0 10px;background:#f7faf9}
 .wx-chart-scroll .wx-panel svg{display:block;width:100%;height:auto}
+
+/* Keep scales outside the moving data, at the same height as their grid lines. */
+.wx-graph{display:grid;grid-template-columns:1fr;position:relative}
+.wx-graph>svg{grid-area:1 / 1}
+.wx-chart-scroll .wx-graph .wx-axis{position:sticky;left:0;width:52px;z-index:2;background:#f6f8f8;cursor:default;pointer-events:none}
+.wx-hour-grid{stroke:#e2e9eb;stroke-width:1;stroke-dasharray:2 4}
+.wx-time-tick{font-size:12px;fill:#294754}
+.wx-zone-tick{font-size:10px;fill:#48666c}
+.wx-chart-scroll .wx-heading{font-size:14px;padding:3px 10px;background:#f6f8f8;z-index:3}
+.rain-warning{background:#fff3de!important;color:#653c11!important;border-left:3px solid #a85d18;padding:10px 12px;border-radius:4px;font-size:14px;line-height:1.5}

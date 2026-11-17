@@ -218,7 +218,8 @@ function normaliseAlerts(json,t){
   return {verified:complete,active};
 }
 // Rain values are totals for the hour ending at the provider timestamp.
-// A dry hour cannot restart the 48-hour clock, even if its rolling total is high.
+// Separate wet spells after three consecutive hours below 0.2 mm.
+// Old rain cannot make a later, small shower restart the warning clock.
 const rainDateFormat = new Intl.DateTimeFormat('en-IE',{timeZone:TZ,weekday:'short',day:'numeric',month:'short'});
 const rainDeadline=t=>rainDateFormat.format(t)+' at '+fmtTime(t);
 const rainSeries = new WeakMap();
@@ -232,14 +233,20 @@ function rainfallHours(weather) {
     if (Number.isFinite(end)&&Number.isFinite(rain)&&rain>=0&&Number.isFinite(showers)&&showers>=0)
       totals.set(end,rain+showers);
   });
-  for (const [end,amount] of totals) {
-    if (amount===0) {checks.set(end,{known:true});continue;}
+  let spellStart=null,quietHours=0,previousEnd=null;
+  for (const [end,amount] of [...totals].sort((a,b)=>a[0]-b[0])) {
+    // Missing hours are not evidence of a dry break.
+    if(previousEnd!==null && end-previousEnd!==HOUR)quietHours=0;
+    previousEnd=end;
+    if (amount<0.2) {quietHours++;checks.set(end,{known:true});continue;}
+    if(spellStart===null || quietHours>=3)spellStart=end;
+    quietHours=0;
     let hours=1,total=amount,complete=true;
     for (const [window,threshold] of [[1,4],[24,10],[48,15]]) {
       while(hours<window){
         const value=totals.get(end-hours*HOUR);
         if(value===undefined)complete=false;
-        else total+=value;
+        else if(end-hours*HOUR>=spellStart)total+=value;
         hours++;
       }
       if(total+1e-8>=threshold){
@@ -266,6 +273,13 @@ function rainRiskAt(weather,t,now=t) {
   }
   if(projected)return {status:'warning',...projected};
   return {status:complete?'clear':'unknown'};
+}
+function rainWarning(risk,now) {
+  if(risk.status==='unknown')return 'Water-quality check unavailable: recent rainfall data are incomplete.';
+  if(risk.status!=='warning')return '';
+  let text='Water-quality warning: '+(risk.end>now?'forecast heavy rain may affect the water. If it falls, the 48-hour warning runs until ':'recent heavy rain may affect the water. The 48-hour warning runs until ')+rainDeadline(risk.until)+'.';
+  if(risk.projectedUntil)text+=' A further heavy wet spell could extend this to '+rainDeadline(risk.projectedUntil)+'.';
+  return text;
 }
 
 // NOAA solar equations. Longitude is east-positive; the apparent horizon is -0.833°.
@@ -346,11 +360,6 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   const chosenPast=Number.isFinite(selected)&&selected<now-20*MIN;
   if(chosenPast){status='unknown';headline='Choose an upcoming time';explanation='This forecast is intended for future swims.';}
   else if(severeWarning||alerts.active.length){status='avoid';headline='Do not swim';explanation=severeWarning?.headline||'A bathing-water alert applies to Seapoint.';}
-  else if(rainRisk.status==='warning'){
-    status='avoid';headline='Avoid swimming after heavy rain';
-    explanation=(rainRisk.end>now?'If the forecast rain falls, avoid swimming until ':'Recent rain may affect water quality. Avoid swimming until ')+rainDeadline(rainRisk.until)+'.';
-    if(rainRisk.projectedUntil)explanation+=' Further forecast rain could extend this to '+rainDeadline(rainRisk.projectedUntil)+'.';
-  }
   else if(windGrade.status==='avoid'){
     status='avoid';headline=windGrade.short;
     explanation=windGrade.short==='Strong gusts' ? 'Gusts of '+formatWindSpeed(gust)+' m/s are forecast.' : 'Sustained winds of '+formatWindSpeed(wk)+' m/s are forecast.';
@@ -361,7 +370,6 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   else if(!tide.inside){status='avoid';headline='Below your tide minimum';explanation='The tide is forecast below your '+minimumTide+' m minimum.';}
   else if(windGrade.status==='unknown'||waveGrade.status==='unknown'||light.ok===null){status='unknown';headline='Not enough information';explanation='A daylight, wave or wind forecast is missing.';}
   else if(!alerts.verified||!warningList){status='unknown';headline='Warnings unverified';explanation='The weather warnings or bathing notices could not be verified.';}
-  else if(rainRisk.status==='unknown'){status='unknown';headline='Rain history incomplete';explanation='There is too little local rain data to check the 48-hour water-quality precaution.';}
   else if(warning||windGrade.status==='caution'||waveGrade.status==='caution'){status='caution';headline=windGrade.status==='caution'?'Breezy at Seapoint':waveGrade.status==='caution'?'Choppy water forecast':'Weather warning applies';explanation=windGrade.status==='caution'?'Wind '+formatWindSpeed(wk)+' m/s, gusting to '+formatWindSpeed(gust)+' m/s.':waveGrade.status==='caution'?'Waves around '+wavesM.toFixed(1)+' m are forecast near Seapoint.':warning.headline;}
   const caveats=[];
   if(!warningList)caveats.push('Marine warnings could not be checked');
@@ -434,7 +442,8 @@ function dailyOutlook(input) {
     .map(s => ({time:s.time, status:s.status}));
 
   const wetChecks=daylight.filter(s=>s.rainRisk.status==='warning');
-  const rainNote=wetChecks.length?'Rain-related water warning for daylight checks '+wetChecks[0].time+(wetChecks.length>1?'–'+wetChecks.at(-1).time:'')+'.':'';
+  const riskCheck=wetChecks.at(-1)||daylight.find(s=>s.rainRisk.status==='unknown');
+  const rainNote=riskCheck?rainWarning(riskCheck.rainRisk,input.now):'';
   if (periods.length) {
     // The first favourable period supplies the initial time picker value.
     const first=periods.find(p=>p.status==='good') || periods[0];
@@ -449,10 +458,6 @@ function dailyOutlook(input) {
     reason = 'Choose another day to see its forecast.';
   } else if (daylight.every(s => s.water.active.length)) {
     reason = 'A bathing-water alert applies to Seapoint.';
-  } else if (wetChecks.length===daylight.length) {
-    title='Avoid swimming after heavy rain';
-    reason=wetChecks.at(-1).explanation;
-    return {status,title,reason,hours};
   } else if (daylight.some(s => s.status === 'unknown')) {
     status = 'unknown';
     title = 'Forecast incomplete';
@@ -474,6 +479,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours,rainNote};
 }
 
-const SeapointCore={forecastTime,atInstant,rainRiskAt,tideCurve,formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={rainWarning,forecastTime,atInstant,rainRiskAt,tideCurve,formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

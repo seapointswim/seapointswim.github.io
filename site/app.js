@@ -163,8 +163,8 @@ function renderWater(data){
    else if(!alerts.verified)details.push('Official notices could not be checked.');
    if(rain.status==='warning'){
      const future=rain.end>now;
-     details.push((future?'Forecast rain':'Estimated local rain')+' of '+Number(rain.amount.toFixed(1))+' mm in '+(rain.hours===1?'one hour':rain.hours+' hours')+' ending '+fmt(rain.end)+'. Avoid swimming '+(future?'if this rain falls, ':'')+'until '+fmt(rain.until)+' (48 hours after the rain).');
-     if(rain.projectedUntil)details.push('Further forecast rain could extend this to '+fmt(rain.projectedUntil)+'.');
+     details.push((future?'Forecast rain':'Estimated local rain')+' of '+Number(rain.amount.toFixed(1))+' mm in '+(rain.hours===1?'one hour':rain.hours+' hours')+' ending '+fmt(rain.end)+'. Water-quality warning '+(future?'if this rain falls, ':'')+'until '+fmt(rain.until)+' (48 hours after the wet spell).');
+     if(rain.projectedUntil)details.push('A further heavy wet spell could extend this to '+fmt(rain.projectedUntil)+'.');
    }else if(rain.status==='unknown')details.push('Rain data are incomplete. The 48-hour check is unavailable.');
    else details.push('No heavy rain flagged in the 48-hour check.');
    if(alerts.verified&&!alerts.active.length)details.push('No active Seapoint bathing notice in the checked feed.');
@@ -184,7 +184,7 @@ function renderWater(data){
      if(data.rainRisk.status==='warning'&&data.rainRisk.end===currentRisk.end&&data.rainRisk.projectedUntil&&
         data.water.verified===currentAlerts.verified&&!data.water.active.length&&!currentAlerts.active.length){
        selected.classList.add('flagged');
-       selected.textContent='For '+fmt(data.at)+', further forecast rain could extend the precaution to '+fmt(data.rainRisk.projectedUntil)+'.';
+       selected.textContent='For '+fmt(data.at)+', a further heavy wet spell could extend the warning to '+fmt(data.rainRisk.projectedUntil)+'.';
      }else reading(Date.parse(data.at),data.water,data.rainRisk,'water-selected');
    }
  }
@@ -196,6 +196,8 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  set('chosen','At '+data.time+' · '+dayLabel(data.date));
  set('headline',data.headline);
  set('explain',data.explanation);
+ const rainNote=window.SeapointCore.rainWarning(data.rainRisk,Date.now());
+ set('chosen-rain-note',rainNote);$('chosen-rain-note').hidden=!rainNote;
  const t=data.tide,w=data.waves,wind=data.wind;
  renderFactors(t, w, wind);
  renderTideChart(data);

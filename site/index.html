@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=ecmwf1">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=rainplots2">
 </head>
 <body>
 <div class="app">
@@ -32,7 +32,8 @@
    <p id="water-selected" class="water-reading" hidden></p>
    <details class="water-details"><summary>What the water checks cover</summary>
      <p>The EPA advises avoiding swimming for 48 hours after heavy rain. Runoff and sewer overflows can carry bacteria into the bay. Follow any signs at the steps.</p>
-     <p>We use Open-Meteo’s hourly rainfall estimates near Seapoint. We flag a wet hour with at least 4 mm in an hour, 10 mm in 24 hours or 15 mm in 48 hours. The clock runs from the end of the last qualifying wet hour. Brief downpours can be missed. These are planning thresholds. Only a water sample measures bacteria.</p>
+     <p>We use Open-Meteo’s hourly rainfall estimates near Seapoint. We flag a wet spell reaching 4 mm in an hour, 10 mm within 24 hours or 15 mm within 48 hours. The 48-hour warning runs from the end of the last wet hour in that spell. After three consecutive hours with less than 0.2 mm each, a later shower is treated as a new spell and must reach a threshold on its own. Hours below 0.2 mm do not extend the timer. These spell boundaries are a site heuristic, not an EPA definition. Brief downpours can be missed. These are planning thresholds. Only a water sample measures bacteria.</p>
+     <p>The rainfall warning is separate from the tide, wind and wave recommendation; it does not confirm water safety. Official bathing restrictions still affect the recommendation.</p>
      <p>The council samples Seapoint for E. coli and intestinal enterococci. Check the sample date, especially outside summer. The EPA also publishes council notices about incidents such as wastewater discharges.</p>
      <p><a href="https://www.beaches.ie/frequently-asked-questions/">EPA swimming advice</a> · <a href="https://www.beaches.ie/wp-content/uploads/2025/06/EPA-Information-Note-on-Short-Term-Pollution-Events-final-010818-1-2.pdf">EPA rainfall indicators</a> · <a href="https://www.metoffice.gov.uk/api/assets/file/using-the-map-and-accessing-the-weather-layerspdf?prefix=assets">Hourly rain intensity</a></p>
    </details>
@@ -49,7 +50,7 @@
  <div id="tide-legend"></div><p id="tide-instructions">Slide along the curve to see the predicted height at any time. You can also use the arrow keys.</p></figure></details>
  <div class="dublin-time">All times are local to Dublin</div></section>
  <h2 class="block-title time-title">Forecast for your selected time</h2>
- <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h3 id="headline">Checking conditions…</h3><p id="explain">Looking up the tide, waves and wind.</p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
+ <section class="answer" id="answer" aria-live="polite"><div class="answer-top"><span class="state" id="state"><span class="status-dot"></span> CHECKING</span><time id="chosen">Checking your selection</time></div><h3 id="headline">Checking conditions…</h3><p id="explain">Looking up the tide, waves and wind.</p><p id="chosen-rain-note" class="rain-warning" hidden></p><div class="status-rule" aria-hidden="true"></div><dl class="summary-grid" aria-label="Forecast for your selected time">
    <div><dt>Tide</dt><dd id="tide-main">Checking…</dd><dd class="reading-value" id="tide-value"></dd></div>
    <div><dt>Waves</dt><dd id="wave-main">Checking…</dd><dd class="reading-value" id="wave-value"></dd></div>
    <div><dt>Wind</dt><dd id="wind-main">Checking…</dd><dd class="reading-value" id="wind-value"></dd></div>
@@ -82,7 +83,7 @@
        <div><dt>Wind</dt><dd id="wx-wind"></dd></div><div><dt>Wind from</dt><dd id="wx-dir"></dd></div><div><dt>Gusts · 3 h max</dt><dd id="wx-gust"></dd></div><div><dt>Waves</dt><dd id="wx-waves"></dd></div><div><dt>Rain · past hour</dt><dd id="wx-rain"></dd></div><div><dt>Chance of rain¹</dt><dd id="wx-probability"></dd></div><div><dt>Air</dt><dd id="wx-air"></dd></div><div><dt>Feels like</dt><dd id="wx-feels"></dd></div>
      </dl></div>
      <p class="wx-key"><i></i> Wind <i class="dashed"></i> Gusts <span>Arrows point where the wind blows.</span></p>
-     <p class="wx-help">Scroll sideways to compare hours.</p><div class="wx-chart-scroll" tabindex="0" aria-label="Scrollable hourly weather charts"><div id="wx-chart-canvas">
+     <p class="wx-help">Scroll sideways to compare hours. All times are Dublin local time.</p><div class="wx-chart-scroll" tabindex="0" aria-label="Scrollable hourly weather charts"><div id="wx-chart-canvas">
      <div class="weather-strip" id="weather-strip" role="group" aria-label="Hourly weather conditions"></div>
      <div id="weather-plots"></div></div></div>
      <p class="wx-help">Tap a plot or choose an hour to update the readings above.</p>
@@ -124,12 +125,12 @@
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=ecmwf1" defer></script>
-<script src="./forecast.js?v=ecmwf1" defer></script>
+<script src="./core.js?v=rainplots2" defer></script>
+<script src="./forecast.js?v=rainplots2" defer></script>
 <script src="./tide-chart.js?v=2" defer></script>
-<script src="./weather.js?v=ecmwf1" defer></script>
-<script src="./hourly-weather.js?v=ecmwf1" defer></script>
-<script src="./app.js?v=ecmwf1" defer></script>
+<script src="./weather.js?v=rainplots2" defer></script>
+<script src="./hourly-weather.js?v=rainplots2" defer></script>
+<script src="./app.js?v=rainplots2" defer></script>
 <script async src="https://tally.so/widgets/embed.js"></script>
 </body></html>
 

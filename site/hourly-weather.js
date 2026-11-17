@@ -11,7 +11,7 @@
     {id:'rain',title:'Rain · preceding hour',unit:'mm',keys:['rain'],step:1}
   ];
   let rows=[],selected=0,selectionKey='';
-  const left=42;let right=492;
+  const left=52;let right=492;
   const x=i=>left+(right-left)*(i+.5)/rows.length;
   function draw(svg,tag,attrs,label){
     const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
@@ -27,19 +27,25 @@
       const header=document.createElement('div');header.className='wx-heading';
       const title=document.createElement('strong');title.textContent=s.title+' ('+s.unit+')';
       header.append(title);panel.append(header);
+      const graph=document.createElement('div');graph.className='wx-graph';
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-      const wind=s.id==='wind',bottom=s.id==='rain',height=wind?89:bottom?78:54;
+      svg.classList.add('wx-data');
+      const wind=s.id==='wind',height=wind?170:146;
       svg.setAttribute('viewBox','0 0 '+(right+8)+' '+height);
       svg.setAttribute('aria-hidden','true');
-      panel.append(svg);plot.append(panel);
+      graph.append(svg);panel.append(graph);plot.append(panel);
       const max=Math.max(s.step,Math.ceil(Math.max(0,...rows.flatMap(r=>s.keys.map(k=>r[k])).filter(finite))/s.step)*s.step);
-      title.textContent=s.title+' · 0–'+max+' '+s.unit;
-      const base=47,y=v=>base-v/max*36;
-      for(const tick of [0,max]){
+      const base=106,y=v=>base-v/max*92;
+      const axis=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      axis.classList.add('wx-axis');axis.setAttribute('viewBox','0 0 '+left+' '+height);
+      axis.setAttribute('aria-hidden','true');graph.append(axis);
+      draw(axis,'line',{x1:left-1,x2:left-1,y1:14,y2:base,class:'wx-grid'});
+      for(const tick of [0,max/2,max]){
         draw(svg,'line',{x1:left,x2:right,y1:y(tick),y2:y(tick),class:'wx-grid'});
-        draw(svg,'text',{x:left-5,y:y(tick)+4,'text-anchor':'end'},String(tick));
+        draw(axis,'text',{x:left-8,y:y(tick)+4,'text-anchor':'end'},String(Number(tick.toFixed(2))));
       }
-      draw(svg,'rect',{class:'wx-cursor',x:0,y:4,width:(right-left)/rows.length,height:wind?75:44});
+      rows.forEach((r,i)=>draw(svg,'line',{x1:x(i),x2:x(i),y1:14,y2:base,class:'wx-hour-grid'}));
+      draw(svg,'rect',{class:'wx-cursor',x:0,y:6,width:(right-left)/rows.length,height:base});
       for(const k of s.keys){
         let d='',move=true;
         rows.forEach((r,i)=>{
@@ -56,11 +62,14 @@
       }
       rows.forEach((r,i)=>{
         if(wind && finite(r.dir)){
-          draw(svg,'path',{class:'wx-arrow',d:'M0 6 V-6 M-4 -2 L0 -6 L4 -2',transform:'translate('+x(i)+' 66) rotate('+((r.dir+180)%360)+')'});
+          draw(svg,'path',{class:'wx-arrow',d:'M0 6 V-6 M-4 -2 L0 -6 L4 -2',transform:'translate('+x(i)+' 126) rotate('+((r.dir+180)%360)+')'});
         }
-        if(wind && r.calm)draw(svg,'circle',{class:'wx-calm',cx:x(i),cy:66,r:2});
-        if(bottom && (i===0||Number(r.time.slice(0,2))%6===0))draw(svg,'text',{x:x(i),y:70,'text-anchor':'middle'},r.time.slice(0,2)+'h');
-        if(s.keys.every(k=>!finite(r[k])))draw(svg,'text',{x:x(i),y:34,'text-anchor':'middle'},'–');
+        if(wind && r.calm)draw(svg,'circle',{class:'wx-calm',cx:x(i),cy:126,r:2});
+        const labelY=wind?150:126;
+        draw(svg,'text',{x:x(i),y:labelY,'text-anchor':'middle',class:'wx-time-tick'},r.time);
+        if(rows.filter(other=>other.time===r.time).length>1)
+          draw(svg,'text',{x:x(i),y:labelY+15,'text-anchor':'middle',class:'wx-zone-tick'},r.label.replace(r.time,'').trim());
+        if(s.keys.every(k=>!finite(r[k])))draw(svg,'text',{x:x(i),y:64,'text-anchor':'middle'},'–');
       });
       svg.onclick=e=>{
         const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
