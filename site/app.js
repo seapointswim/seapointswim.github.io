@@ -405,27 +405,4 @@ document.addEventListener('scroll', () => {
   lastScrollY = window.scrollY;
 }, {passive:true});
 
-let commentsLoaded=false;
-$('feedback-comments').ontoggle=async event=>{
-  if(!event.target.open||commentsLoaded)return;
-  commentsLoaded=true;
-  const list=$('feedback-list');
-  list.textContent='Loading comments…';
-  try {
-    const reply=await fetch('https://api.github.com/repos/seapointswim/seapointswim.github.io/issues/4/comments?per_page=10',{signal:AbortSignal.timeout(8000),credentials:'omit'});
-    if(!reply.ok)throw Error('Comments unavailable');
-    const comments=await reply.json();
-    list.replaceChildren();
-    for(const comment of comments){
-      const item=document.createElement('article'),name=document.createElement('strong'),body=document.createElement('p');
-      name.textContent=(comment.user?.login||'GitHub user')+' · '+dayLabel(comment.created_at.slice(0,10));
-      body.textContent=comment.body;
-      item.append(name,body);list.append(item);
-    }
-    if(!comments.length)list.textContent='No comments yet.';
-    else if(comments.length===10)list.append('See the full thread on GitHub.');
-  }catch{
-    list.textContent='Open the GitHub thread below to read the comments.';
-    commentsLoaded=false;
-  }
-};
+
