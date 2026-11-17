@@ -328,7 +328,7 @@ test('recommendation lists every favourable check, including isolated times, and
  }
 });
 
-test('heavy rain blocks the daily windows and expires 48 hours after the last qualifying wet hour',async()=>{
+test('heavy rain adds a warning without changing swim periods and expires after 48 hours',async()=>{
  const input=await dayInput(),hour=input.wind.hourly;
  const end=Date.parse('2026-11-14T06:00Z'),index=hour.time.indexOf('2026-11-14T06:00');
  hour.showers[index]=4;
@@ -338,9 +338,9 @@ test('heavy rain blocks the daily windows and expires 48 hours after the last qu
  assert.equal(risk(end+48*3600000-1).end,end);
  assert.equal(risk(end+48*3600000).status,'clear');
  const plan=core.dailyOutlook(input);
- assert.match(plan.title,/heavy rain/);
- assert.equal(plan.periods,undefined);
- assert.equal(core.assess({...input,time:'14:00'}).status,'avoid');
+ assert.match(plan.rainNote,/Water-quality warning/);
+ assert.ok(plan.periods.some(p=>p.status==='good'));
+ assert.equal(core.assess({...input,time:'14:00'}).status,'good');
 });
 test('sustained rain triggers the rolling amounts, including across midnight; gaps never imply dry weather',async()=>{
  for(const [hours,mm] of [[24,10],[48,15]]){
@@ -356,5 +356,41 @@ test('sustained rain triggers the rolling amounts, including across midnight; ga
  const input=await dayInput(),h=input.wind.hourly;
  h.rain[h.time.indexOf(day+'T09:00')]=null;
  assert.equal(core.rainRiskAt(input.wind,core.localToUtc(day,'14:00')).status,'unknown');
- assert.equal(core.assess({...input,time:'14:00'}).status,'unknown');
+ assert.equal(core.assess({...input,time:'14:00'}).status,'good');
+ assert.match(core.dailyOutlook(input).rainNote,/unavailable/);
+});
+
+test('light showers after a dry break do not restart a heavy wet spell warning',async()=>{
+ const input=await dayInput(),h=input.wind.hourly;
+ const put=(time,amount)=>h.rain[h.time.indexOf(time)]=amount;
+ put('2026-11-14T21:00',4);put('2026-11-14T22:00',3);put('2026-11-14T23:00',3);
+ put('2026-11-15T00:00',1);put('2026-11-15T01:00',1);
+ // Trace rain and a dry morning, followed by a separate small shower.
+ put('2026-11-15T02:00',.1);put('2026-11-15T03:00',.1);
+ put('2026-11-15T13:00',.2);put('2026-11-15T14:00',.6);put('2026-11-15T15:00',.1);
+ const end=Date.parse('2026-11-15T01:00Z'),now=Date.parse('2026-11-15T08:00Z');
+ const warning=core.rainRiskAt(input.wind,Date.parse('2026-11-15T16:00Z'),now);
+ assert.equal(warning.end,end);assert.equal(warning.until,end+48*3600000);
+ assert.equal(warning.projectedUntil,undefined);
+ assert.equal(core.rainRiskAt(input.wind,end+48*3600000).status,'clear');
+});
+test('a genuinely heavy new spell starts its own warning, including a forecast warning',async()=>{
+ const input=await dayInput(),h=input.wind.hourly;
+ h.rain[h.time.indexOf('2026-11-14T22:00')]=4;
+ h.rain[h.time.indexOf('2026-11-15T13:00')]=4;
+ const end=Date.parse('2026-11-14T22:00Z'),later=Date.parse('2026-11-15T13:00Z');
+ const warning=core.rainRiskAt(input.wind,later,now);
+ assert.equal(warning.end,end);assert.equal(warning.projectedUntil,later+48*3600000);
+ assert.equal(core.rainRiskAt(input.wind,later,later).end,later);
+ assert.equal(core.assess({...input,time:'14:00'}).status,'good');
+});
+test('short breaks stay in a spell; three dry or trace hours separate spells',async()=>{
+ for(const gap of [2,3]){
+  const input=await dayInput(),h=input.wind.hourly;
+  const index=h.time.indexOf('2026-11-15T01:00');
+  h.rain[index]=3;h.rain[index+1]=3;
+  h.rain[index+gap+2]=3;h.rain[index+gap+3]=3;
+  const risk=core.rainRiskAt(input.wind,core.localToUtc(day,'12:00'));
+  assert.equal(risk.status,gap===2?'warning':'clear');
+ }
 });
