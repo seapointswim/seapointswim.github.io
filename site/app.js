@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const SOURCE_LABEL={tide:'Marine Institute · Seapoint beach tide model',wind:'Wind forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
+const SOURCE_LABEL={tide:'Marine Institute · Seapoint beach tide model',wind:'ECMWF weather forecast',waves:'Marine wave forecast',seaTemp:'Sea surface temperature (forecast)',warnings:'Met Éireann warnings',alerts:'EPA bathing alerts',buoy:'M2 buoy (offshore)'};
 const grades = {good:'Favourable', caution:'Caution', avoid:'Avoid', unknown:'Unknown'};
 let minimumTide=window.SeapointCore.defaultMinimumTide;
 try {
@@ -52,9 +52,9 @@ async function latestForecast() {
     const response=await fetch('./data/conditions.json?cache_bust='+Math.floor(Date.now()/60000),
       {cache:'no-store',signal:AbortSignal.timeout(10000)});
     if (response.ok) published=await response.json();
-    if (published?.schemaVersion!==2 || published?.notes?.tides?.stationID!==window.SeapointCore.SEAPOINT_STATION) published=null;
+    if (!marine.compatible(published) || published?.notes?.tides?.stationID!==window.SeapointCore.SEAPOINT_STATION) published=null;
   } catch { /* The official feeds are the independent recovery path. */ }
-  if (marine.isFresh(published)) {
+  if (marine.isFresh(published) && marine.sourceFresh(published,'wind')) {
     if (!published.wind) {
       set('daily-reason','Checking the local wind forecast directly.');
       const wind=await marine.fetchWind();
@@ -66,7 +66,7 @@ async function latestForecast() {
   set('daily-reason','Checking the latest readings directly with the forecast providers.');
   const live=await marine.buildSnapshot({loadTables,beachNotices:true});
   live.retrievedDirectly=true;
-  return live;
+  return marine.retainPrevious(live,published||snapshot);
 }
 function choose(date, time, defaultDay = false) {
   chooseDayFromForecast = defaultDay;
@@ -191,8 +191,8 @@ function renderWater(data){
 }
 function render(data){renderDaily(data.outlook, data.daylight, data.highs);loaded=data;const status=data.status||'unknown';$('answer').className='answer '+status;
  set('state', status === 'unknown' ? 'FORECAST UNCERTAIN' : grades[status].toUpperCase());
- set('weather-when',dayLabel(data.date)+' · '+data.time);
- $('weather-when').dateTime=data.at;
+ set('weather-when',data.weatherAt?fmt(data.weatherAt)+' · hourly forecast':dayLabel(data.date)+' · '+data.time);
+ $('weather-when').dateTime=data.weatherAt||data.at;
  set('chosen','At '+data.time+' · '+dayLabel(data.date));
  set('headline',data.headline);
  set('explain',data.explanation);
@@ -229,16 +229,21 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  const temp=data.temperature||{};
  const localWind=speed(wind?.speedKn),gust=speed(wind?.gustKn);
  set('local-speed',localWind==null?'—':localWind+' m/s');
- set('local-gust',gust==null?'Gust forecast unavailable':'Gusts '+gust+' m/s');
+ set('local-gust',gust==null?'Gust forecast unavailable':'Gusts '+gust+' m/s · 3 h max');
+ const direction=wind?.direction;
+ set('local-direction',Number.isFinite(direction)?'From '+['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(direction/22.5)%16]:'Direction unavailable');
+ const condition=data.condition||window.SeapointWeather.condition(null);
+ $('local-condition').innerHTML=window.SeapointWeather.icon(condition)+'<span>'+condition.label+'</span>';
+ set('local-probability',Number.isFinite(data.probability)?data.probability+'% chance of rain¹':'Chance of rain unavailable');
  const rain=data.rain;
  set('local-rain',rain?.amount==null?'—':Number(rain.amount.toFixed(2))+' mm');
- set('rain-hour',rain?.amount==null?'Rain forecast unavailable':'Hour ending '+rain.end);
+ set('rain-hour',rain?.amount==null?'Rain forecast unavailable':rain.start+'–'+rain.end+' · hourly rain');
 
  const degrees=v=>typeof v==='number'&&Number.isFinite(v)?Math.round(v)+'°C':'—';
  set('sea-temp',degrees(temp.waterC));set('air-temp',degrees(temp.airC));set('feels-temp',degrees(temp.feelsC));
  set('feels-label',(temp.feelsLabel||'Feels like').toUpperCase());
  set('sea-temp-source',temp.seaKind==='offshore observation'?'Offshore buoy (not Seapoint)':temp.seaKind==='forecast'?'Nearby sea forecast':'Not available');
- set('feels-source',temp.windChillC!=null?'Wind chill index':'Apparent temperature');
+ set('feels-source',Number.isFinite(temp.feelsC)?'Apparent temperature':'Unavailable');
  set('temperature-note',temp.note||'Temperature estimates unavailable. Check local conditions.');
  const tempBox=$('temperature-brief');tempBox.className='temperature-brief '+(temp.coldWater?'cold-water':'');
  set('sea-detail',temp.waterC==null?'Not available':Number(temp.waterC).toFixed(1)+'°C · '+(temp.waterSource||'Forecast'));
@@ -264,10 +269,14 @@ function render(data){renderDaily(data.outlook, data.daylight, data.highs);loade
  for(const [id,meta] of Object.entries(data.sources||{})){
    const row=document.createElement('div');row.className='source-row';
    const a=document.createElement('a');a.href=meta.url||'#';a.target='_blank';a.rel='noopener';a.textContent=SOURCE_LABEL[id]||id;
-   const label=document.createElement('small');const good=meta.status==='ok',warn=meta.status==='stale'||meta.status==='published-copy';label.className=good?'good':warn?'warn':'bad';label.textContent=({ok:'Connected',stale:'Stale',unavailable:'Unavailable','published-copy':'Saved beach predictions'})[meta.status]||meta.status;
+   const label=document.createElement('small');const good=meta.status==='ok',warn=meta.status==='stale'||meta.status==='retained'||meta.status==='published-copy';label.className=good?'good':warn?'warn':'bad';label.textContent=({ok:'Connected',stale:'Stale',retained:'Saved · refresh failed',unavailable:'Unavailable','published-copy':'Saved beach predictions'})[meta.status]||meta.status;
    if(meta.error)label.title=meta.error;row.append(a,label);sources.append(row);
  }
+ const weather=snapshot?.wind;
+ const grid=weather?.gridDistanceKm;
+ set('weather-provenance',weather?'Weather retrieved '+fmt(weather.retrievedAt)+'.'+(Number.isFinite(grid)?' Returned grid: '+weather.latitude.toFixed(5)+', '+weather.longitude.toFixed(5)+' (about '+grid.toFixed(1)+' km from the steps).':'')+' Model issue time unavailable.':'ECMWF weather unavailable.');
  if(data.buoy?.fresh && Number.isFinite(data.buoy.waveM)){const row=document.createElement('div');row.className='source-row';row.innerHTML='<span>Offshore buoy measurement</span><small class="good"></small>';row.lastChild.textContent=data.buoy.waveM.toFixed(1)+' m · '+fmt(data.buoy.at);sources.append(row)}
+ set('weather-age',snapshot?.wind?'Weather retrieved '+fmt(snapshot.wind.retrievedAt)+(snapshot.sources?.wind?.status==='retained'?' · refresh failed; showing saved data.':'.'):'Weather unavailable.');
  set('stamp',data.checkedAt?(data.direct?'Sources checked directly ':'Forecast checked ')+fmt(data.checkedAt)+' (Dublin time). Forecasts are models, not Seapoint steps measurements.':'Awaiting first scheduled GitHub Actions update.');
 }
 function loading(){if(!loaded){set('headline','Checking conditions…');set('explain','Looking up tides, waves and wind.');$('answer').className='answer unknown';set('state','CHECKING');set('chosen',dayLabel(current.date)+' · '+current.time)}}
@@ -277,7 +286,10 @@ function fromSnapshot(s){
    points:s.tidePoints||[],events:s.events||[],wind:s.wind||null,waves:s.waves||null,
    seaTemp:s.seaTemp||null,buoyTemp:s.buoyTemp||null,warningFeed:s.warningFeed||null,
    alertsFeed:s.alertsFeed||null,now:Date.now(),sources:{tides:{fallback:!!s.notes?.tides?.fallback}}};
- const fresh = window.SeapointForecast.isFresh(s,base.now);
+ const forecast=window.SeapointForecast;
+ const fresh = forecast.isFresh(s,base.now) && forecast.sourceFresh(s,'wind',base.now);
+ for(const [id,key] of Object.entries({wind:'wind',waves:'waves',seaTemp:'seaTemp',buoy:'buoyTemp',warnings:'warningFeed',alerts:'alertsFeed'}))
+   if(!forecast.sourceFresh(s,id,base.now))base[key]=null;
  if (!fresh) Object.assign(base,{wind:null,waves:null,seaTemp:null,buoyTemp:null,warningFeed:null,alertsFeed:null});
  const beyond = current.date>nextDate(here().date,7);
  let outlook;
@@ -294,9 +306,13 @@ function fromSnapshot(s){
  }
  const output=c.assess(base);
  const end=Math.ceil(c.localToUtc(base.date,base.time)/3600000)*3600000;
- const hour=c.dublinParts(end),rainHour=c.atHour(base.wind,hour.date,hour.time,0);
- if (Number.isFinite(rainHour?.rain) && Number.isFinite(rainHour?.showers))
-   output.rain={amount:rainHour.rain+rainHour.showers,end:hour.time};
+ const hour=c.dublinParts(end),rainHour=c.atInstant(base.wind,end,0);
+ const rainAmount=window.SeapointWeather.rainAmount(rainHour);
+ if(rainAmount!==null)output.rain={amount:rainAmount,start:c.fmtTime(end-3600000),end:hour.time};
+ output.probability=window.SeapointWeather.probability(rainHour);
+ const at=c.localToUtc(base.date,base.time),weatherHour=c.atInstant(base.wind,at);
+ output.weatherAt=Number.isFinite(weatherHour?._at)?new Date(weatherHour._at).toISOString():null;
+ output.condition=window.SeapointWeather.condition(weatherHour?.weather_code,window.SeapointWeather.nightAt(base.wind,weatherHour?._at??at));
  const midnight=c.localToUtc(base.date,'00:00'),nextMidnight=c.localToUtc(nextDate(base.date,1),'00:00');
  output.minimum=minimumTide;
  output.curve=c.tideCurve(base.points,base.events,midnight,nextMidnight);
@@ -318,7 +334,7 @@ function fromSnapshot(s){
 async function load(force=false){
  const n=++seq;
  try {
-   if (!snapshot || force || !window.SeapointForecast.isFresh(snapshot)) {
+   if (!snapshot || force || !window.SeapointForecast.isFresh(snapshot) || !window.SeapointForecast.sourceFresh(snapshot,'wind')) {
      lastRequestAt=Date.now();
      loading();
      if (!refreshRequest) refreshRequest=latestForecast().finally(()=>{refreshRequest=null;});
@@ -333,7 +349,7 @@ async function load(force=false){
    const selected=await tidesForSelection(snapshot,current.date);
    if (n===seq) render(fromSnapshot(selected));
  } catch(e){if(n!==seq)return;
-  snapshot=null;
+  // Keep the last successful snapshot in memory for a later retry.
   renderWater(null);
   $('tide-figure').hidden=true;
   set('weather-when',dayLabel(current.date)+' · '+current.time);
@@ -344,7 +360,7 @@ async function load(force=false){
   $('warning-guide').hidden = true;
   renderFactors(null, null, null);
   set('window-main','Tide data unavailable');set('window-sub','A successful scheduled refresh is required.');set('high-detail','—');set('rise-detail','—');
-  for(const id of ['sea-temp','air-temp','feels-temp','local-speed','local-gust','local-rain','rain-hour'])set(id,'—');
+  for(const id of ['sea-temp','air-temp','feels-temp','local-speed','local-gust','local-rain','rain-hour','local-condition','local-probability','local-direction'])set(id,'—');
   set('sea-temp-source','Unavailable');set('feels-source','Unavailable');set('temperature-note','No forecast data.');
   set('stamp','No published snapshot yet.');
   $('hours').innerHTML='<div class="hours-placeholder">No current hourly outlook</div>';

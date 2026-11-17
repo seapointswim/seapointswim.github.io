@@ -103,7 +103,7 @@ footer{padding:25px 0 40px;text-align:center;font-size:11px;line-height:1.7;colo
 .wx-key i{display:inline-block;width:15px;border-bottom:3px solid #137771;vertical-align:middle}
 .wx-key .dashed{border-bottom:2px dashed #694a82;margin-left:10px}.wx-key span{display:inline-block;margin-left:10px}
 .wx-panel{padding:9px 0 1px;border-top:1px solid #dce5e5;--wx-color:#137771}
-.wx-waves{--wx-color:#316d9a}.wx-rain{--wx-color:#5289b4}.wx-sun{--wx-color:#b4750c}
+.wx-waves{--wx-color:#316d9a}.wx-rain{--wx-color:#5289b4}
 .wx-heading{display:flex;align-items:baseline;justify-content:space-between;gap:3px 10px;flex-wrap:wrap;font-size:14px}.wx-heading span{font-size:13px;font-variant-numeric:tabular-nums}
 .wx-panel svg{width:100%;height:auto;display:block;cursor:crosshair;fill:#445d66;font-size:13px}
 .wx-grid{stroke:#d7e3e4;stroke-width:1}.wx-cursor{fill:#263c5011}
@@ -163,3 +163,23 @@ main h3{font-size:var(--subheading-size);line-height:1.25;letter-spacing:-.015em
 #feedback-list{margin:10px 0;font-size:14px;overflow-wrap:anywhere}
 #feedback-list article{padding:10px 0;border-top:1px solid #dce6e7}
 #feedback-list article p{white-space:pre-wrap}
+
+/* Weather conditions are informational, never swim recommendations. */
+.weather-icon{width:42px;height:42px;flex:none;vertical-align:middle}
+.condition-reading{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:650;margin:4px 10px 8px;min-height:42px}
+.weather-strip{display:flex;overflow-x:auto;gap:4px;padding:6px 0 12px;scroll-snap-type:x proximity}
+.weather-strip button{flex:0 0 72px;border:1px solid #d7e0e6;border-radius:9px;background:#fff;color:#294754;display:flex;align-items:center;flex-direction:column;padding:8px 3px;gap:3px;scroll-snap-align:start}
+.weather-strip button[aria-pressed=true]{border:2px solid #526e91;padding:7px 2px;background:#f0f4fa}
+.weather-strip button span:first-child{font-size:12px;font-variant-numeric:tabular-nums}
+.weather-strip button span:last-child{font-size:11px;line-height:1.25;min-height:28px}
+.wx-table .wx-condition-cell{white-space:normal;min-width:5rem;max-width:6rem;font-size:12px}
+.wx-condition-cell span{display:block;line-height:1.2}
+.wx-readings dd{white-space:normal}.wx-readout{position:static}
+#local-direction,#local-probability{display:block;margin-top:4px}
+
+.wx-chart-scroll{overflow-x:auto;border:1px solid #d7e3e3;border-radius:10px;padding:6px 0;margin:10px 0;overscroll-behavior-x:contain}
+.wx-chart-scroll .weather-strip{overflow:visible;margin-left:42px;gap:0;padding:0}
+.wx-chart-scroll .weather-strip button{flex:0 0 64px;box-sizing:border-box;border-radius:0;border-color:transparent;background:transparent}
+.wx-chart-scroll .weather-strip button[aria-pressed=true]{border-color:#526e91;background:#f0f4fa}
+.wx-chart-scroll .wx-heading{position:sticky;left:0;width:max-content;max-width:calc(100vw - 80px);padding:0 10px;background:#f7faf9}
+.wx-chart-scroll .wx-panel svg{display:block;width:100%;height:auto}

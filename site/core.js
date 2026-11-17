@@ -134,14 +134,20 @@ function isSmallCraft(warning) {
   return /\bsmall[ -]craft\b/i.test(warning.type+' '+warning.headline);
 }
 const forecastTimes = new WeakMap();
-function atHour(f,date,time,maxGap=40){
+function forecastTime(f,stamp){
+  if (typeof stamp==='number') return stamp*1000;
+  if (typeof stamp!=='string') return NaN;
+  if (/Z$|[+-]\d\d:\d\d$/.test(stamp)) return Date.parse(stamp);
+  if (f.utcTime) return Date.parse(stamp+'Z');
+  if (Number.isFinite(f.utc_offset_seconds)) return Date.parse(stamp+'Z')-f.utc_offset_seconds*1000;
+  return localToUtc(stamp.slice(0,10),stamp.slice(11,16));
+}
+function atHour(f,date,time,maxGap=40){return atInstant(f,localToUtc(date,time),maxGap);}
+function atInstant(f,target,maxGap=40){
   const hourly=f?.hourly;if(!Array.isArray(hourly?.time))return null;
-  const target=localToUtc(date,time);
   let times = forecastTimes.get(f);
   if (!times) {
-    times = hourly.time.map(s => f.utcTime
-      ? Date.parse(s.endsWith('Z') ? s : s + 'Z')
-      : localToUtc(s.slice(0,10), s.slice(11,16)));
+    times = hourly.time.map(s => forecastTime(f,s));
     forecastTimes.set(f, times);
   }
   let best=-1,bestDiff=Infinity;
@@ -150,7 +156,7 @@ function atHour(f,date,time,maxGap=40){
     const diff=Math.abs(u-target);if(diff<bestDiff){best=i;bestDiff=diff;}
   }
   if(best<0||bestDiff>maxGap*MIN)return null;
-  const value={};for(const [k,arr] of Object.entries(hourly))if(k!=='time'&&Array.isArray(arr))value[k]=arr[best]??null;
+  const value={_at:times[best]};for(const [k,arr] of Object.entries(hourly))if(k!=='time'&&Array.isArray(arr))value[k]=arr[best]??null;
   return value;
 }
 function formatWindSpeed(knots) {
@@ -221,10 +227,7 @@ function rainfallHours(weather) {
   if (rainSeries.has(weather)) return rainSeries.get(weather);
   const hourly=weather.hourly, totals=new Map(), checks=new Map();
   hourly.time.forEach((stamp,i)=>{
-    // Open-Meteo supplies ISO local times with a fixed offset for the requested period.
-    const end=Number.isFinite(weather.utc_offset_seconds)
-      ? Date.parse(stamp+'Z')-weather.utc_offset_seconds*1000
-      : localToUtc(stamp.slice(0,10),stamp.slice(11,16));
+    const end=forecastTime(weather,stamp);
     const rain=hourly.rain?.[i],showers=hourly.showers?.[i];
     if (Number.isFinite(end)&&Number.isFinite(rain)&&rain>=0&&Number.isFinite(showers)&&showers>=0)
       totals.set(end,rain+showers);
@@ -289,6 +292,8 @@ function sunTimesForDay(daily, date) {
   const index = daily?.time?.indexOf(date) ?? -1;
   // The weather request already asks for local timestamps in Europe/Dublin.
   function clock(value) {
+    if (typeof value==='number') return fmtTime(value*1000);
+    if (typeof value==='string' && value.endsWith('Z')) return fmtTime(Date.parse(value));
     if (typeof value !== 'string' || !value.startsWith(date + 'T')) return null;
     const time = value.slice(11, 16);
     return /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : null;
@@ -328,8 +333,8 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   const seaKind=Number.isFinite(modelSeaC)?'forecast':useBuoy?'offshore observation':'unavailable';
   const chill=windChillC(airC,wk);
   const apparentC=wh?.apparent_temperature!=null?Number(wh.apparent_temperature):null;
-  const feelsC=chill!=null?chill:apparentC;
-  const feelsLabel=chill!=null?'Wind chill':'Feels like';
+  const feelsC=apparentC;
+  const feelsLabel='Feels like';
   const thermal=temperatureStatus(waterC,airC);
   const light=isDay(wind,date,time);
   const warningList=activeWarnings(warningFeed,selected);
@@ -469,6 +474,6 @@ function dailyOutlook(input) {
   return {status, title, reason, hours,rainNote};
 }
 
-const SeapointCore={rainRiskAt,tideCurve,formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
+const SeapointCore={forecastTime,atInstant,rainRiskAt,tideCurve,formatWindSpeed,defaultMinimumTide,isSmallCraft,SEAPOINT_STATION,sunTimesForDay,highTidesForDay,defaultSwimDate,dailyOutlook,dublinParts,localToUtc,fmtTime,parseTideCsv,extrema,interpolatedLevel,nearestHigh,tideInfo,atHour,windStatus,waveStatus,activeWarnings,normaliseAlerts,isDay,windChillC,temperatureStatus,assess,slots};
 if(typeof module!=="undefined"&&module.exports)module.exports=SeapointCore;
 if(typeof window!=="undefined")window.SeapointCore=SeapointCore;

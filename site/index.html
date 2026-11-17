@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F6F8F8">
 <meta name="description" content="Should you swim at Seapoint, Dublin? Check tides, waves, wind, water temperature, air temperature and expected wind chill.">
-<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=seapoint16">
+<title>Seapoint Swim | Worth a dip?</title><link rel="stylesheet" href="./styles.css?v=ecmwf1">
 </head>
 <body>
 <div class="app">
@@ -11,7 +11,7 @@
  <main>
  <div class="intro"><h1>Worth a dip?</h1></div>
  <section id="daily" class="daily unknown" aria-label="Swim recommendation" aria-live="polite" aria-atomic="true">
-   <div class="daily-meta"><h2 class="block-title" id="daily-day">Recommended swim times</h2><span id="daily-grade"></span></div>
+   <div class="daily-meta"><h2 class="block-title" id="daily-day">Swim recommendation · Wed, 18 Nov</h2><span id="daily-grade"></span></div>
    <p id="daily-period">Checking the forecast…</p>
    <p id="daily-reason">Checking daylight swim times at Seapoint.</p>
    <p id="daily-rain-note" hidden></p>
@@ -20,9 +20,9 @@
      <p>Each range groups consecutive favourable checks, 15 minutes apart. A time shown on its own is a single forecast check. Times marked caution have less favourable conditions.</p><div id="period-reasons"></div>
    </details>
    <dl id="daylight" class="sun-times" aria-label="Daylight and high tides at Seapoint Beach">
-     <div><dt>Sunrise</dt><dd id="sunrise">…</dd></div>
-     <div><dt>Sunset</dt><dd id="sunset">…</dd></div>
-     <div class="daily-tides"><dt>High tides · Seapoint Beach</dt><dd id="daily-highs">…</dd></div>
+     <div><dt>Sunrise</dt><dd id="sunrise">07:54</dd></div>
+     <div><dt>Sunset</dt><dd id="sunset">16:24</dd></div>
+     <div class="daily-tides"><dt>High tides · Seapoint Beach</dt><dd id="daily-highs">05:50 and 17:55</dd></div>
    </dl>
 
  </section>
@@ -57,9 +57,10 @@
  <p class="shore-check">These are forecasts. At the steps, check the water and make sure you can get out easily.</p></section>
  <section class="temperature-brief" id="temperature-brief" aria-label="Weather at your selected time">
  <div class="temperature-heading"><h3>Weather at Seapoint</h3><span><time id="weather-when"></time></span></div>
+ <p id="local-condition" class="condition-reading"></p><p id="weather-age" class="wx-help"></p>
  <div class="temperature-grid">
-   <div class="temperature-metric"><small>WIND</small><strong id="local-speed">—</strong><span id="local-gust">Steps area forecast</span></div>
-   <div class="temperature-metric"><small>RAIN</small><strong id="local-rain">—</strong><span id="rain-hour">Hourly total</span></div>
+   <div class="temperature-metric"><small>WIND</small><strong id="local-speed">—</strong><span id="local-gust">Steps area forecast</span><span id="local-direction"></span></div>
+   <div class="temperature-metric"><small>RAIN</small><strong id="local-rain">—</strong><span id="rain-hour">Hourly total</span><span id="local-probability"></span></div>
    <div class="temperature-metric"><small>SEA</small><strong id="sea-temp">—</strong><span id="sea-temp-source">Checking forecast</span></div>
    <div class="temperature-metric"><small>AIR</small><strong id="air-temp">—</strong><span>Forecast temperature</span></div>
    <div class="temperature-metric"><small><span id="feels-label">WIND CHILL</span></small><strong id="feels-temp">—</strong><span id="feels-source">Forecast</span></div>
@@ -76,12 +77,14 @@
      <button id="show-table" type="button" aria-pressed="false" aria-controls="wx-table-view">Table</button>
    </div>
    <div id="wx-plots-view">
-     <div class="wx-toolbar"><label for="wx-hour">Hour ending</label><button type="button" id="wx-back" aria-label="Previous weather hour">‹</button><select id="wx-hour" aria-label="Hour ending in Dublin"></select><button type="button" id="wx-next" aria-label="Next weather hour">›</button></div>
-     <div class="wx-readout"><p id="wx-selected-heading">Readings for the selected hour</p><dl class="wx-readings" aria-label="Readings for the selected hour">
-       <div><dt>Wind</dt><dd id="wx-wind"></dd></div><div><dt>Wind from</dt><dd id="wx-dir"></dd></div><div><dt>Gusts</dt><dd id="wx-gust"></dd></div><div><dt>Waves</dt><dd id="wx-waves"></dd></div><div><dt>Rain</dt><dd id="wx-rain"></dd></div><div><dt>Sunshine</dt><dd id="wx-sun"></dd></div><div><dt>Air</dt><dd id="wx-air"></dd></div>
+     <div class="wx-toolbar"><label for="wx-hour">Time</label><button type="button" id="wx-back" aria-label="Previous weather hour">‹</button><select id="wx-hour" aria-label="Weather time in Dublin"></select><button type="button" id="wx-next" aria-label="Next weather hour">›</button></div>
+     <div class="wx-readout"><p id="wx-selected-heading">Readings for the selected hour</p><p id="wx-condition" class="condition-reading"></p><dl class="wx-readings" aria-label="Readings for the selected hour">
+       <div><dt>Wind</dt><dd id="wx-wind"></dd></div><div><dt>Wind from</dt><dd id="wx-dir"></dd></div><div><dt>Gusts · 3 h max</dt><dd id="wx-gust"></dd></div><div><dt>Waves</dt><dd id="wx-waves"></dd></div><div><dt>Rain · past hour</dt><dd id="wx-rain"></dd></div><div><dt>Chance of rain¹</dt><dd id="wx-probability"></dd></div><div><dt>Air</dt><dd id="wx-air"></dd></div><div><dt>Feels like</dt><dd id="wx-feels"></dd></div>
      </dl></div>
      <p class="wx-key"><i></i> Wind <i class="dashed"></i> Gusts <span>Arrows point where the wind blows.</span></p>
-     <div id="weather-plots"></div>
+     <p class="wx-help">Scroll sideways to compare hours.</p><div class="wx-chart-scroll" tabindex="0" aria-label="Scrollable hourly weather charts"><div id="wx-chart-canvas">
+     <div class="weather-strip" id="weather-strip" role="group" aria-label="Hourly weather conditions"></div>
+     <div id="weather-plots"></div></div></div>
      <p class="wx-help">Tap a plot or choose an hour to update the readings above.</p>
    </div>
    <div id="wx-table-view" hidden>
@@ -89,12 +92,12 @@
      <p id="wx-scroll-help" class="wx-help">Scroll sideways to compare hours.</p>
      <div class="wx-scroll" tabindex="0" role="region" aria-labelledby="wx-caption" aria-describedby="wx-scroll-help">
        <table class="wx-table" aria-labelledby="wx-caption">
-         <thead><tr id="wx-times"><th scope="col">Hour ending</th></tr></thead>
+         <thead><tr id="wx-times"><th scope="col">Time</th></tr></thead>
          <tbody id="wx-rows"></tbody>
        </table>
      </div>
    </div>
-   <p class="wx-help">Rain and sunshine are totals for the hour ending. A dash means the forecast is unavailable.</p>
+   <p class="wx-help">Conditions, temperatures and wind speed are at the shown time. Rain is the total for the preceding hour; gusts are the maximum for the preceding 3 hours. A dash means unavailable. Weather icons do not assess swimming safety.</p><p class="wx-help">¹ Chance of rain is the ensemble probability of more than 0.1 mm of precipitation (including snow) in the preceding hour. It is separate from the predicted amount.</p>
  </div></section>
  <section id="note" class="note"><span class="note-symbol">i</span><div><p id="notice">Check the local notices before swimming.</p><a id="warning-guide" href="https://www.met.ie/weather-warnings" hidden>How Met Éireann defines a Small Craft Warning</a></div></section>
  <h2 class="block-title extra-title">Forecast sources</h2>
@@ -105,6 +108,11 @@
  <p class="tiny">The planner rules out sustained winds from about 11.3 m/s, onshore winds from 9.8 m/s or gusts from 14.9 m/s. These are rounded planning cut-offs. Met Éireann classifies 11.3 m/s as a <a href="https://www.met.ie/forecasts/marine-inland-lakes/beaufort-scale">strong breeze</a>.</p>
  <p class="tiny">Water below 15°C brings cold-water shock risk (RNLI). The wind-chill index estimates how cold exposed, dry skin feels in moving air, not wet-skin cooling after a swim. Sea temperatures are forecast at a nearby model grid cell, not measured at Seapoint. Any M2 buoy reading is offshore.</p>
  <p class="tiny">An old routine EPA water sample does not automatically reduce the recommendation. Active warnings/restrictions matter. The buoy is offshore; its waves are not necessarily those at Seapoint. Check ferry wash and exit conditions.</p>
+ <h3>Weather model and timing</h3>
+ <p class="tiny">Atmospheric weather uses <a href="https://open-meteo.com/en/docs/ecmwf-api">Open-Meteo · ECMWF IFS HRES 9 km</a> (ecmwf_ifs), requested at 53.2977505, −6.1596072. This is a deliberate model choice; it has not been shown to be more accurate at Seapoint and does not reproduce Yr exactly. Symbols use Open-Meteo’s WMO weather codes. Feels-like temperature combines temperature, humidity, wind and radiation.</p>
+ <p class="tiny">Rain includes large-scale rain and showers. The separate chance of precipitation comes from ECMWF’s approximately 25 km ensemble. Gusts follow Open-Meteo’s ECMWF definition: maximum 3-second wind over the preceding 3 hours. Later forecast hours are interpolated: native output is hourly to 90 hours, 3-hourly to 144 hours and 6-hourly thereafter.</p>
+ <p class="tiny" id="weather-provenance"></p>
+ <p class="tiny">Retrieving data every 15 minutes does not create a new model run. ECMWF runs roughly every 6 hours. This endpoint does not identify the exact model issue time; the retrieval time below is not an issue time. Recent rainfall values are archived forecasts, not rain-gauge measurements.</p>
  <h3>Data connections</h3><div class="source-list" id="sources"><div>Waiting for data…</div></div><div class="update-stamp" id="stamp">Not yet checked</div>
  </div></details>
  <section class="feedback-section" aria-labelledby="feedback-title">
@@ -116,11 +124,12 @@
  </main>
  <footer>Forecast guidance, not a safety guarantee. Never enter the water if conditions at the steps look unsafe. <a href="https://www.met.ie/forecasts/marine-inland-lakes" target="_blank" rel="noopener">Marine warnings</a> · <a href="https://www.beaches.ie/" target="_blank" rel="noopener">Bathing notices</a></footer>
 </div><noscript><p class="noscript">JavaScript is required to select a date and retrieve live conditions.</p></noscript>
-<script src="./core.js?v=seapoint17" defer></script>
-<script src="./forecast.js?v=seapoint16" defer></script>
+<script src="./core.js?v=ecmwf1" defer></script>
+<script src="./forecast.js?v=ecmwf1" defer></script>
 <script src="./tide-chart.js?v=2" defer></script>
-<script src="./hourly-weather.js?v=4" defer></script>
-<script src="./app.js?v=seapoint19" defer></script>
+<script src="./weather.js?v=ecmwf1" defer></script>
+<script src="./hourly-weather.js?v=ecmwf1" defer></script>
+<script src="./app.js?v=ecmwf1" defer></script>
 <script async src="https://tally.so/widgets/embed.js"></script>
 </body></html>
 

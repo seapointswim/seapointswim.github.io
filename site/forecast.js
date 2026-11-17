@@ -1,11 +1,13 @@
 'use strict';
 (function () {
 const {SEAPOINT_STATION,parseTideCsv,extrema} = typeof module === 'object' ? require('./core') : window.SeapointCore;
+const WEATHER_MODEL='ecmwf_ifs';
+const SCHEMA_VERSION=3;
 const NOW = () => Date.now();
 const HOUR = 3600000;
 const PROVIDERS={
   tide: {name:'Marine Institute · Seapoint beach tide model',url:'https://erddap.marine.ie/erddap/info/imiTidePredictionEpa/index.html'},
-  wind: {name:'Open-Meteo · local wind and air temperature forecast',url:'https://open-meteo.com/en/docs'},
+  wind: {name:'Open-Meteo · ECMWF IFS HRES 9 km',url:'https://open-meteo.com/en/docs/ecmwf-api'},
   waves: {name:'Open-Meteo · nearby offshore wave forecast',url:'https://open-meteo.com/en/docs/marine-weather-api'},
   seaTemp: {name:'Open-Meteo · model sea-surface temperature',url:'https://open-meteo.com/en/docs/marine-weather-api'},
   buoy: {name:'Marine Institute · M2 offshore weather buoy',url:'https://www.marine.ie/site-area/data-services/real-time-observations/irish-weather-buoy-network'},
@@ -150,9 +152,53 @@ function isFresh(snapshot, now=Date.now()) {
   const age=now-Date.parse(snapshot?.generatedAt);
   return Number.isFinite(age) && age>=-20*60000 && age<=90*60000;
 }
+function normaliseWeather(weather) {
+  const expected={wind_speed_10m:'kn',wind_gusts_10m:'kn',temperature_2m:'°C',rain:'mm',showers:'mm',precipitation_probability:'%'};
+  for(const [key,unit] of Object.entries(expected)) if(weather.hourly_units?.[key] && weather.hourly_units[key]!==unit)
+    throw Error('Unexpected unit for '+key);
+  const {latitude,longitude}=weather;
+  const gridDistanceKm=Number.isFinite(latitude)&&Number.isFinite(longitude)
+    ? Math.hypot((latitude-53.2977505)*111.2,(longitude+6.1596072)*111.2*Math.cos(53.2977505*Math.PI/180)):null;
+  if(gridDistanceKm!==null && gridDistanceKm>20) throw Error('ECMWF grid is unexpectedly far from Seapoint');
+  const numeric=typeof weather.hourly.time[0]==='number';
+  if(numeric){
+    weather={...weather,utcTime:true,hourly:{...weather.hourly,time:weather.hourly.time.map(t=>new Date(t*1000).toISOString())}};
+    if(weather.daily){
+      const d=weather.daily, parts=(t)=>SeapointCoreForTime(t);
+      weather.daily={...d,time:d.time.map((t,i)=>parts(d.sunrise?.[i]??t)),
+        sunrise:d.sunrise?.map(t=>Number.isFinite(t)?new Date(t*1000).toISOString():null),
+        sunset:d.sunset?.map(t=>Number.isFinite(t)?new Date(t*1000).toISOString():null)};
+    }
+  }
+  const retrievedAt=new Date().toISOString();
+  return {...weather,model:WEATHER_MODEL,provider:'Open-Meteo',retrievedAt,modelIssuedAt:null,
+    modelName:'ECMWF IFS HRES 9 km',gridDistanceKm,
+    probabilitySource:'ECMWF IFS ensemble · approximately 25 km',
+    gustPeriodHours:3};
+}
+function SeapointCoreForTime(seconds){
+  const core=typeof module==='object'?require('./core'):window.SeapointCore;
+  return core.dublinParts(seconds*1000).date;
+}
+function compatible(s){return s?.schemaVersion===SCHEMA_VERSION && s?.wind?.model===WEATHER_MODEL;}
+function sourceFresh(s,id,now=Date.now()){
+  const stamp=id==='wind'?s?.wind?.retrievedAt:s?.sources?.[id]?.checked;
+  return isFresh({generatedAt:stamp||s?.generatedAt},now);
+}
+function retainPrevious(next,previous){
+  if(!compatible(previous))return next;
+  const keys={wind:'wind',waves:'waves',seaTemp:'seaTemp',buoy:'buoyTemp',warnings:'warningFeed',alerts:'alertsFeed'};
+  for(const [id,key] of Object.entries(keys)){
+    if(next[key] || !previous[key])continue;
+    next[key]=previous[key];
+    next.sources[id]={...previous.sources[id],status:'retained',lastAttempt:next.sources[id]?.checked,
+      error:next.sources[id]?.error||'Refresh failed; keeping previous data'};
+  }
+  return next;
+}
 async function fetchWind(fetchImpl=fetch, retryConnection=false) {
   const windUrl=url('https://api.open-meteo.com/v1/forecast',{
-    latitude:'53.2977505',longitude:'-6.1596072',cell_selection:'nearest',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,showers,sunshine_duration,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:5,forecast_days:8
+    latitude:'53.2977505',longitude:'-6.1596072',cell_selection:'nearest',models:WEATHER_MODEL,timeformat:'unixtime',hourly:'wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,showers,weather_code,cloud_cover,precipitation_probability,is_day',daily:'sunrise,sunset',wind_speed_unit:'kn',timezone:'Europe/Dublin',past_days:5,forecast_days:8
   });
   return attempt('wind',async()=>{
     let weather;
@@ -164,9 +210,9 @@ async function fetchWind(fetchImpl=fetch, retryConnection=false) {
       await new Promise(resolve=>setTimeout(resolve,750));
       weather=await readRemote(windUrl,'json',fetchImpl);
     }
-    if (!validHourly(weather,'wind_speed_10m') || !validHourly(weather,'wind_gusts_10m') ||
-        !validHourly(weather,'temperature_2m')) throw Error('Incomplete wind or air-temperature forecast');
-    return weather;
+    if (!['wind_speed_10m','temperature_2m','weather_code','precipitation'].some(key=>validHourly(weather,key)))
+      throw Error('No usable ECMWF atmospheric forecast');
+    return normaliseWeather(weather);
   });
 }
 async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNotices=false}={}){
@@ -207,7 +253,7 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNot
   const found=Object.fromEntries(ids.map((id,i)=>[id,values[i]]));
   const {points:tidePoints,events,fallback:sourceFallback}=found.tide.value;
   const out={
-    schemaVersion:2,generatedAt:new Date(now).toISOString(),validForMinutes:90,
+    schemaVersion:SCHEMA_VERSION,weatherModel:WEATHER_MODEL,generatedAt:new Date(now).toISOString(),validForMinutes:90,
     coverage:{days:8,timeZone:'Europe/Dublin'},
     tidePoints,events,
     wind:found.wind.value,waves:found.waves.value,seaTemp:found.seaTemp.value,
@@ -218,7 +264,7 @@ async function buildSnapshot({fetchImpl=fetch,now=Date.now(),loadTables,beachNot
   return out;
 }
 
-const api={buildSnapshot,fetchWind,getTides,tideUrl,savedEvents,isFresh,parseBuoyCsv,mergeWaveForecast,fetchAllAlerts,fetchBeachNotices};
+const api={WEATHER_MODEL,SCHEMA_VERSION,compatible,normaliseWeather,sourceFresh,retainPrevious,buildSnapshot,fetchWind,getTides,tideUrl,savedEvents,isFresh,parseBuoyCsv,mergeWaveForecast,fetchAllAlerts,fetchBeachNotices};
 if (typeof module === 'object') module.exports=api;
 else window.SeapointForecast=api;
 })();
