@@ -24,7 +24,17 @@ function initialReadings(html, snapshot) {
   return html;
 }
 async function main(){
-  const snap=await buildSnapshot();
+  let previous=null;
+  try {
+    const r=await fetch('https://seapointswim.github.io/data/conditions.json',{signal:AbortSignal.timeout(10000),cache:'no-store'});
+    if(r.ok)previous=await r.json();
+  } catch { /* First deployment or published copy unavailable. */ }
+  if(!forecast.compatible(previous)) {
+    try {previous=JSON.parse(fs.readFileSync(ROOT,'utf8'));}catch{}
+  }
+  const snap=forecast.retainPrevious(await buildSnapshot(),previous);
+  // Never publish the new interface with a relabelled Best Match forecast.
+  if(!snap.wind || snap.wind.model!==forecast.WEATHER_MODEL)throw Error('No ECMWF snapshot available; retaining current deployment');
   fs.mkdirSync(path.dirname(ROOT),{recursive:true});
   fs.writeFileSync(ROOT,JSON.stringify(snap));
   const index = path.resolve(__dirname, '../site/index.html');
