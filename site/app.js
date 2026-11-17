@@ -379,6 +379,32 @@ function updateVisibleForecast() {
 document.addEventListener('visibilitychange', updateVisibleForecast);
 setInterval(updateVisibleForecast, 60000);
 
+const main = document.querySelector('main');
+let lastScrollY = window.scrollY;
+document.addEventListener('scroll', () => {
+  const scrollingDown = window.scrollY > lastScrollY;
+  lastScrollY = window.scrollY;
+  if (!scrollingDown) return;
+
+  const passed = Array.from(main.querySelectorAll('details[open]')).filter(section => {
+    const bounds = section.getBoundingClientRect();
+    return bounds.height > 0 && bounds.bottom <= 0;
+  });
+  if (!passed.length) return;
+
+  // Keep the content below the closed sections in the same place on screen.
+  const bottomBefore = main.getBoundingClientRect().bottom;
+  for (const section of passed) {
+    if (section.contains(document.activeElement)) {
+      section.querySelector('summary').focus({preventScroll:true});
+    }
+    section.open = false;
+  }
+  const shift = main.getBoundingClientRect().bottom - bottomBefore;
+  if (shift) window.scrollBy(0, shift);
+  lastScrollY = window.scrollY;
+}, {passive:true});
+
 let commentsLoaded=false;
 $('feedback-comments').ontoggle=async event=>{
   if(!event.target.open||commentsLoaded)return;
