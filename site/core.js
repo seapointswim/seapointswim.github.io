@@ -321,7 +321,7 @@ function isDay(weather, date, time) {
   const sun = sunTimesForDay(weather?.daily, date);
   if (sun.rise && sun.set) {
     const selected = localToUtc(date, time);
-    const start = localToUtc(date, sun.rise) + 15 * MIN;
+    const start = localToUtc(date, sun.rise);
     const end = localToUtc(date, sun.set) - 25 * MIN;
     return {...sun, ok: selected >= start && selected <= end};
   }
@@ -366,7 +366,7 @@ function assess({date,time,minimumTide=defaultMinimumTide,points=[],events=[],wi
   }
   else if(waveGrade.status==='avoid'){status='avoid';headline='Rough seas';explanation='The wave forecast rules out this time.';}
   else if(!tide.valid){status='unknown';headline='No tide prediction';explanation='Cannot assess the swim window without tide information.';}
-  else if(light.ok===false){status='avoid';headline='Not a good time';explanation='The planner starts 15 minutes after sunrise and ends 25 minutes before sunset.';}
+  else if(light.ok===false){status='avoid';headline='Not a good time';explanation='The planner starts at sunrise and ends 25 minutes before sunset.';}
   else if(!tide.inside){status='avoid';headline='Below your tide minimum';explanation='The tide is forecast below your '+minimumTide+' m minimum.';}
   else if(windGrade.status==='unknown'||waveGrade.status==='unknown'||light.ok===null){status='unknown';headline='Not enough information';explanation='A daylight, wave or wind forecast is missing.';}
   else if(!alerts.verified||!warningList){status='unknown';headline='Warnings unverified';explanation='The weather warnings or bathing notices could not be verified.';}
@@ -412,7 +412,7 @@ function boundaryReason(neighbour, edge, now) {
   if (Date.parse(neighbour.at)<now) return 'Earlier checks have already passed.';
   if (neighbour.headline==='Not a good time') {
     return edge==='end'?'The daylight cut-off is 25 minutes before sunset ('+neighbour.daylight.set+').':
-      'The daylight window opens 15 minutes after sunrise ('+neighbour.daylight.rise+').';
+      'The daylight window opens at sunrise ('+neighbour.daylight.rise+').';
   }
   if (neighbour.headline==='Choppy water forecast') {
     return 'At '+neighbour.time+', waves are forecast at '+neighbour.waves.heightM.toFixed(2)+' m. Caution starts at 0.60 m.';
@@ -424,7 +424,11 @@ function dailyOutlook(input) {
   const midnight = localToUtc(input.date, '00:00');
   const tomorrow = new Date(Date.parse(input.date + 'T12:00:00Z') + DAY).toISOString().slice(0, 10);
   const end = localToUtc(tomorrow, '00:00');
-  for (let at = midnight; at < end; at += 15 * MIN) {
+  const checkTimes=new Set();
+  for(let at=midnight;at<end;at+=15*MIN)checkTimes.add(at);
+  const sunrise=sunTimesForDay(input.wind?.daily,input.date).rise;
+  if(sunrise)checkTimes.add(localToUtc(input.date,sunrise));
+  for (const at of [...checkTimes].sort((a,b)=>a-b)) {
     const time = fmtTime(at);
     const reading = assess({...input, time});
     if (at < input.now) {
