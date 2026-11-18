@@ -117,7 +117,7 @@ test('top answer gives a continuous daylight period and a time inside it', async
  assert.equal(plan.status, 'good');
  assert.ok(plan.start < plan.end);
  assert.ok(plan.start <= plan.pick && plan.pick <= plan.end);
- assert.ok(plan.start >= '08:05' && plan.end <= '15:57');
+ assert.ok(plan.start >= '07:50' && plan.end <= '15:57');
  for (let t = core.localToUtc(day,plan.start); t <= core.localToUtc(day,plan.end); t += 15*60000) {
    assert.equal(core.assess({...input,time:core.fmtTime(t)}).status,'good');
  }
@@ -197,7 +197,7 @@ test('sunrise and sunset follow the selected Dublin date independently of the sw
  const summer = '2026-06-15', winter = '2026-11-16';
  const weather = {daily:{time:[summer,winter], sunrise:[summer+'T04:57',winter+'T07:49'],
    sunset:[summer+'T21:57',winter+'T16:24']}};
- assert.deepEqual(core.isDay(weather,summer,'05:00'),{rise:'04:57',set:'21:57',ok:false});
+ assert.deepEqual(core.isDay(weather,summer,'05:00'),{rise:'04:57',set:'21:57',ok:true});
  assert.deepEqual(core.isDay(weather,winter,'08:15'),{rise:'07:49',set:'16:24',ok:true});
  weather.daily.sunrise[1] = null;
  assert.deepEqual(core.isDay(weather,winter,'08:15'),{rise:'07:50',set:'16:24',ok:true});
@@ -393,4 +393,14 @@ test('short breaks stay in a spell; three dry or trace hours separate spells',as
   const risk=core.rainRiskAt(input.wind,core.localToUtc(day,'12:00'));
   assert.equal(risk.status,gap===2?'warning':'clear');
  }
+});
+
+test('daylight and a favourable period can start at exact sunrise, without rounding up',async()=>{
+ const input=await dayInput();input.now=core.localToUtc(day,'06:00');input.minimumTide=0;
+ assert.equal(core.isDay(input.wind,day,'07:49').ok,false);
+ assert.equal(core.isDay(input.wind,day,'07:50').ok,true);
+ assert.equal(core.isDay(input.wind,day,'15:57').ok,true);
+ assert.equal(core.isDay(input.wind,day,'15:58').ok,false);
+ assert.equal(core.assess({...input,time:'07:50'}).status,'good');
+ assert.equal(core.dailyOutlook(input).periods[0].start,'07:50');
 });
